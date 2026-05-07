@@ -1,2 +1,11 @@
-# nanapp
-关于旅游的项目
+
+  # Store Discovery App
+
+  This is a code bundle for Store Discovery App. The original project is available at https://www.figma.com/design/vF34aHTvKNjvQvCpTIBRt5/Store-Discovery-App.
+
+  ## Running the code
+
+  Run `npm i` to install the dependencies.
+
+  Run `npm run dev` to start the development server.
+  
