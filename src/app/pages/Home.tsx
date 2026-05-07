@@ -568,10 +568,9 @@ export default function Home() {
 
         <button
           onClick={toggleFavoritesList}
-          className={`flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 rounded-xl transition-colors ${
+          className={`flex flex-col items-center justify-center gap-1 ${
             showFavoritesList ? 'text-gray-900' : 'text-gray-400'
           }`}
-          aria-label={t('favorites')}
         >
           <Heart size={24} />
           <span className="text-xs">{t('favorites')}</span>
@@ -604,82 +603,56 @@ export default function Home() {
       {/* 收藏列表弹窗 */}
       <AnimatePresence>
         {showFavoritesList && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[1px]"
-              onClick={handleCloseFavorites}
-              aria-hidden="true"
-            />
-
-            <motion.div
-              initial={{ opacity: 0, y: 28, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 24, scale: 0.98 }}
-              transition={{ type: 'spring', damping: 24, stiffness: 280 }}
-              className="fixed inset-x-3 bottom-20 z-[60] max-h-[min(68dvh,560px)] overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-[0_24px_60px_rgba(15,23,42,0.22)] backdrop-blur sm:inset-x-auto sm:right-5 sm:w-[min(420px,calc(100vw-2.5rem))] lg:right-8"
-              onTouchStart={handleFavoritesSwipeStart}
-              onTouchEnd={handleFavoritesSwipeEnd}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="favorites-title"
-            >
-              <div className="flex max-h-[min(68dvh,560px)] flex-col">
-                <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-                  <div>
-                    <h3 id="favorites-title" className="text-lg font-bold text-gray-950">{t('myFavorites')}</h3>
-                    <p className="mt-0.5 text-sm text-gray-500">{savedStoresList.length} 家已收藏</p>
-                  </div>
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed right-0 bottom-16 w-1/4 min-w-[300px] bg-white shadow-2xl z-40 rounded-l-2xl overflow-hidden"
+            style={{ height: 'calc((100vh - 4rem) / 2)' }}
+            onTouchStart={handleFavoritesSwipeStart}
+            onTouchEnd={handleFavoritesSwipeEnd}
+          >
+            <div className="h-full flex flex-col">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="font-bold text-lg">我的收藏</h3>
                 <button
                   onClick={handleCloseFavorites}
-                    className="flex size-11 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                    aria-label="关闭收藏列表"
+                  className="text-gray-400 hover:text-gray-600"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-                <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="flex-1 overflow-y-auto">
                 {savedStoresList.length === 0 ? (
-                    <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 px-6 py-10 text-center text-gray-500">
-                      <div className="mb-4 flex size-16 items-center justify-center rounded-full bg-white text-gray-300 shadow-sm">
-                        <Heart size={34} />
-                      </div>
-                      <p className="font-medium text-gray-700">{t('noFavorites')}</p>
-                      <p className="mt-1 text-sm leading-6 text-gray-500">喜欢的店铺会出现在这里，方便下次快速查看。</p>
+                  <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                    <Heart size={48} className="mb-2" />
+                    <p>暂无收藏</p>
                   </div>
                 ) : (
-                    <div className="space-y-3">
+                  <div className="p-2">
                     {savedStoresList.map((store) => (
                       <motion.div
                         key={store.id}
                         layout
                         initial={{ opacity: 1 }}
                         exit={{ opacity: 0, x: 50 }}
-                          className="cursor-pointer rounded-2xl border p-4 transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                        className="p-3 mb-2 rounded-lg border transition-all hover:shadow-md cursor-pointer"
                         style={{
                           borderColor: store.category === '美食' ? '#14B8A6' : store.category === '医美' ? '#E8B4C8' : '#A78BFA',
                           backgroundColor: store.category === '美食' ? '#F0FDFA' : store.category === '医美' ? '#FDF5F8' : '#F5F3FF',
                         }}
                         onClick={() => handleFavoriteCardClick(store.id)}
                       >
-                          <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                              <div className="mb-2 flex items-start justify-between gap-2">
-                                <h4 className="min-w-0 flex-1 text-base font-semibold leading-6 text-gray-950">{store.name}</h4>
-                                <span className="shrink-0 rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-gray-600">{store.distance}km</span>
-                              </div>
-                              <div className="mb-3 flex items-start gap-1.5 text-sm leading-5 text-gray-600">
-                                <MapPin size={15} className="mt-0.5 shrink-0" />
-                                <span className="line-clamp-2">{store.address}</span>
-                              </div>
-                              <div className="flex flex-wrap gap-1.5">
+                            <h4 className="font-semibold text-sm mb-1 truncate">{store.name}</h4>
+                            <div className="flex flex-wrap gap-1">
                               {store.tags.slice(0, 2).map((tag) => (
                                 <span
                                   key={tag}
-                                    className="rounded-full px-2.5 py-1 text-xs font-medium"
+                                  className="text-xs px-2 py-0.5 rounded-full"
                                   style={{
                                     backgroundColor: store.category === '美食' ? '#CCFBF1' : store.category === '医美' ? '#F8E8EE' : '#EDE9FE',
                                     color: store.category === '美食' ? '#14B8A6' : store.category === '医美' ? '#E8B4C8' : '#A78BFA',
@@ -695,8 +668,7 @@ export default function Home() {
                               e.stopPropagation();
                               handleRemoveFromFavorites(store.id);
                             }}
-                              className="flex size-11 flex-shrink-0 items-center justify-center rounded-full bg-white/80 text-red-500 shadow-sm transition-colors hover:bg-white hover:text-red-600"
-                              aria-label={`取消收藏 ${store.name}`}
+                            className="flex-shrink-0 text-red-500 hover:text-red-600 transition-colors"
                           >
                             <Heart size={20} className="fill-current" />
                           </button>
@@ -707,8 +679,7 @@ export default function Home() {
                 )}
               </div>
             </div>
-            </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
 

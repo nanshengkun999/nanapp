@@ -1,21 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import {
-  ArrowRight,
-  Car,
-  Heart,
-  Home,
-  Image,
-  Languages,
-  Map,
-  MapPin,
-  MessageSquare,
-  MoreVertical,
-  ShieldCheck,
-  Star,
-  User,
-  Video,
-} from 'lucide-react';
+import { User, Home, Car, Languages, Image, Video, Heart, MessageSquare, MoreVertical, MapPin, Map } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -155,7 +140,7 @@ const services: Service[] = [
   },
 ];
 
-const categories: { name: ServiceCategory; nameKey: string; icon: ReactNode }[] = [
+const categories: { name: ServiceCategory; nameKey: string; icon: React.ReactNode }[] = [
   { name: '地陪', nameKey: 'localGuide', icon: <User size={20} /> },
   { name: '民宿', nameKey: 'guesthouse', icon: <Home size={20} /> },
   { name: '包车', nameKey: 'carRental', icon: <Car size={20} /> },
@@ -164,156 +149,84 @@ const categories: { name: ServiceCategory; nameKey: string; icon: ReactNode }[] 
   { name: '剪辑视频', nameKey: 'videoEdit', icon: <Video size={20} /> },
 ];
 
-const categoryDescriptions: Record<ServiceCategory, string> = {
-  地陪: '熟悉本地动线的中文陪同与行程协助',
-  民宿: '精选城市核心区住宿，覆盖短住与商务出行',
-  包车: '机场接送、日租包车与商务出行服务',
-  翻译: '中韩陪同翻译、医美翻译与商务会议支持',
-  修图: '人像精修、批量修图与快速交付',
-  剪辑视频: '短视频、Vlog 与旅拍素材剪辑',
-};
-
 export default function Services() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>('地陪');
 
-  const filteredServices = useMemo(
-    () => services.filter((s) => s.category === selectedCategory),
-    [selectedCategory],
-  );
-
-  const selectedCategoryConfig = categories.find((cat) => cat.name === selectedCategory);
-  const recommendedService = filteredServices[0];
+  const filteredServices = services.filter((s) => s.category === selectedCategory);
 
   return (
-    <div className="min-h-dvh bg-slate-50 pb-20 text-slate-950">
-      <main className="mx-auto w-full max-w-6xl px-4 pb-6 pt-5 sm:px-6 lg:px-8">
-        <section className="mb-5 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 sm:p-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-sm font-medium text-teal-700">
-                <ShieldCheck size={16} />
-                Tanmap Services
-              </div>
-              <h1 className="text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">本地服务预约</h1>
-              <p className="mt-2 text-sm leading-6 text-slate-600 sm:text-base">
-                {categoryDescriptions[selectedCategory]}
-              </p>
-            </div>
-
-            {recommendedService && (
-              <div className="rounded-2xl bg-slate-950 px-4 py-3 text-white shadow-lg sm:min-w-72">
-                <p className="text-xs font-medium text-teal-200">当前推荐</p>
-                <div className="mt-1 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{recommendedService.name}</p>
-                    <p className="mt-0.5 text-xs text-slate-300">{recommendedService.provider}</p>
-                  </div>
-                  <span className="shrink-0 text-base font-bold text-teal-200">{recommendedService.price}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* 分类导航 */}
-        <div className="sticky top-0 z-20 -mx-4 mb-4 border-y border-slate-200/80 bg-slate-50/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/95 sm:shadow-sm">
-          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((cat) => {
-              const isActive = selectedCategory === cat.name;
-
-              return (
-                <button
-                  key={cat.name}
-                  onClick={() => setSelectedCategory(cat.name)}
-                  className={`flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-all ${
-                    isActive
-                      ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                      : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-900'
-                  }`}
-                  aria-pressed={isActive}
-                >
-                  {cat.icon}
-                  <span>{t(cat.nameKey)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mb-3 flex items-center justify-between px-1">
-          <div>
-            <h2 className="text-lg font-bold text-slate-950">{t(selectedCategoryConfig?.nameKey ?? 'services')}</h2>
-            <p className="mt-0.5 text-sm text-slate-500">{filteredServices.length} 项可预约服务</p>
-          </div>
-        </div>
-
-        {/* 服务列表 */}
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredServices.map((service, index) => (
-            <motion.article
-              key={service.id}
-              layout
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, delay: index * 0.03 }}
-              className="group grid grid-cols-[104px_1fr] overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/80 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-200/80 sm:flex sm:flex-col"
+    <div className="min-h-screen bg-gray-50 pb-16">
+      {/* 分类导航 - 顶部固定 */}
+      <div className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="px-3 py-2 flex gap-1.5 overflow-x-auto scrollbar-hide">
+          {categories.map((cat) => (
+            <button
+              key={cat.name}
+              onClick={() => setSelectedCategory(cat.name)}
+              className={`px-3 py-1.5 rounded-lg whitespace-nowrap transition-all flex items-center gap-1 text-sm ${
+                selectedCategory === cat.name
+                  ? 'bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600'
+              }`}
             >
-              <div className="relative h-full min-h-[164px] w-[104px] overflow-hidden bg-slate-100 sm:h-44 sm:w-full">
-                <img
-                  src={service.image}
-                  alt={service.name}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
-                />
-                <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur">
-                  {t(categories.find((cat) => cat.name === service.category)?.nameKey ?? 'services')}
-                </div>
-              </div>
+              {cat.icon}
+              <span>{t(cat.nameKey)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
-              <div className="flex min-w-0 flex-1 flex-col p-4">
-                <div className="mb-2 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="line-clamp-2 text-base font-bold leading-6 text-slate-950">{service.name}</h3>
-                    <p className="mt-1 text-sm text-slate-500">{service.provider}</p>
-                  </div>
-                  <span className="shrink-0 text-right text-base font-bold text-teal-700">{service.price}</span>
-                </div>
-
-                <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 font-semibold text-amber-700">
-                    <Star size={14} className="fill-current" />
-                    {service.rating}
+      {/* 服务列表 */}
+      <div className="p-2 space-y-2">
+        {filteredServices.map((service) => (
+          <motion.div
+            key={service.id}
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+          >
+            <div className="flex gap-3 p-2.5">
+              <img
+                src={service.image}
+                alt={service.name}
+                className="w-16 h-16 rounded-md object-cover flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-0.5">
+                  <h3 className="font-semibold text-sm truncate">{service.name}</h3>
+                  <span className="text-teal-600 font-bold text-sm whitespace-nowrap">
+                    {service.price}
                   </span>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-600">已认证</span>
                 </div>
-
-                <p className="mb-4 line-clamp-2 text-sm leading-6 text-slate-600 sm:min-h-12">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs text-gray-500">{service.provider}</span>
+                  <span className="text-yellow-500 text-xs">★ {service.rating}</span>
+                </div>
+                <p className="text-xs text-gray-600 line-clamp-1 mb-2">
                   {service.description}
                 </p>
-
-                <div className="mt-auto grid grid-cols-[1fr_auto] gap-2">
-                  <button className="min-h-11 rounded-xl bg-teal-600 px-4 text-sm font-bold text-white shadow-sm shadow-teal-600/20 transition-colors hover:bg-teal-700">
+                <div className="flex gap-2">
+                  <button className="flex-1 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white px-3 py-1.5 rounded-md text-xs font-semibold hover:shadow-md transition-shadow">
                     {t('bookNowBtn')}
                   </button>
-                  <button className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50">
+                  <button className="px-3 py-1.5 border border-gray-300 rounded-md text-xs text-gray-600 hover:bg-gray-50">
                     {t('detailsBtn')}
-                    <ArrowRight size={15} />
                   </button>
                 </div>
               </div>
-            </motion.article>
-          ))}
-        </section>
-      </main>
+            </div>
+          </motion.div>
+        ))}
+      </div>
 
       {/* 底部导航栏 */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-slate-200 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] backdrop-blur">
+      <div className="fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-gray-200 flex items-center justify-around z-50">
         <button
           onClick={() => navigate('/')}
-          className="flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-400 transition-colors hover:text-slate-700"
-          aria-label={t('map')}
+          className="flex flex-col items-center justify-center gap-1 text-gray-400"
         >
           <Map size={24} />
           <span className="text-xs">{t('map')}</span>
@@ -321,17 +234,14 @@ export default function Services() {
 
         <button
           onClick={() => navigate('/')}
-          className="flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-400 transition-colors hover:text-slate-700"
-          aria-label={t('favorites')}
+          className="flex flex-col items-center justify-center gap-1 text-gray-400"
         >
           <Heart size={24} />
           <span className="text-xs">{t('favorites')}</span>
         </button>
 
         <button
-          className="flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 rounded-xl text-teal-700"
-          aria-label={t('services')}
-          aria-current="page"
+          className="flex flex-col items-center justify-center gap-1 text-gray-900"
         >
           <MapPin size={24} />
           <span className="text-xs">{t('services')}</span>
@@ -339,8 +249,7 @@ export default function Services() {
 
         <button
           onClick={() => navigate('/forum')}
-          className="flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-400 transition-colors hover:text-slate-700"
-          aria-label={t('forum')}
+          className="flex flex-col items-center justify-center gap-1 text-gray-400"
         >
           <MessageSquare size={24} />
           <span className="text-xs">{t('forum')}</span>
@@ -348,8 +257,7 @@ export default function Services() {
 
         <button
           onClick={() => navigate('/more')}
-          className="flex min-h-12 min-w-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-400 transition-colors hover:text-slate-700"
-          aria-label="更多"
+          className="flex flex-col items-center justify-center gap-1 text-gray-400"
         >
           <MoreVertical size={24} />
         </button>
