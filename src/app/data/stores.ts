@@ -18,7 +18,9 @@ export interface Store {
 
 export const categories: Category[] = ['美食', '医美', '夜生活'];
 
-export const stores: Store[] = [
+const storeVideoUrls = ['/videos/tanmap-spot-1.mp4', '/videos/tanmap-spot-2.mp4'];
+
+const baseStores: Store[] = [
   {
     id: '1',
     name: '云端咖啡馆',
@@ -275,3 +277,8 @@ export const stores: Store[] = [
     saved: true,
   },
 ];
+
+export const stores: Store[] = baseStores.map((store, index) => ({
+  ...store,
+  videoUrl: storeVideoUrls[index % storeVideoUrls.length],
+}));

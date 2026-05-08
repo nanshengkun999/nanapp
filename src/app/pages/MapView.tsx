@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { stores, type Store } from '../data/stores';
+import { useLanguage } from '../contexts/LanguageContext';
+import { localizeStore, localizeTag } from '../utils/storeI18n';
 
 const mapBounds = {
   north: 40.015,
@@ -40,26 +42,26 @@ const categoryMeta: Record<
   Store['category'],
   {
     Icon: LucideIcon;
-    label: string;
+    labelKey: string;
     marker: string;
     glow: string;
   }
 > = {
   美食: {
     Icon: Utensils,
-    label: '餐饮',
+    labelKey: 'dining',
     marker: 'bg-[#f97316]',
     glow: 'shadow-[0_10px_28px_rgba(249,115,22,0.34)]',
   },
   医美: {
     Icon: Sparkles,
-    label: '医美',
+    labelKey: 'beauty',
     marker: 'bg-[#ec4899]',
     glow: 'shadow-[0_10px_28px_rgba(236,72,153,0.32)]',
   },
   夜生活: {
     Icon: Music2,
-    label: '夜生活',
+    labelKey: 'nightlife',
     marker: 'bg-[#6366f1]',
     glow: 'shadow-[0_10px_28px_rgba(99,102,241,0.34)]',
   },
@@ -80,21 +82,21 @@ const roadSegments = [
 ];
 
 const districtBlocks = [
-  { left: '6%', top: '9%', width: '22%', height: '9%', rotate: -5, label: '朝阳公园' },
-  { left: '34%', top: '8%', width: '18%', height: '8%', rotate: 3, label: '望京' },
-  { left: '70%', top: '17%', width: '19%', height: '10%', rotate: 8, label: '蓝港' },
-  { left: '10%', top: '31%', width: '20%', height: '11%', rotate: -12, label: '三里屯' },
-  { left: '58%', top: '31%', width: '22%', height: '9%', rotate: 8, label: '使馆区' },
-  { left: '17%', top: '61%', width: '18%', height: '10%', rotate: 8, label: '工体' },
-  { left: '42%', top: '63%', width: '21%', height: '9%', rotate: -5, label: '国贸' },
-  { left: '68%', top: '72%', width: '20%', height: '10%', rotate: 4, label: '双井' },
+  { left: '6%', top: '9%', width: '22%', height: '9%', rotate: -5, labelKey: 'chaoyangPark' },
+  { left: '34%', top: '8%', width: '18%', height: '8%', rotate: 3, labelKey: 'wangjing' },
+  { left: '70%', top: '17%', width: '19%', height: '10%', rotate: 8, labelKey: 'blueHarbor' },
+  { left: '10%', top: '31%', width: '20%', height: '11%', rotate: -12, labelKey: 'sanlitun' },
+  { left: '58%', top: '31%', width: '22%', height: '9%', rotate: 8, labelKey: 'embassyArea' },
+  { left: '17%', top: '61%', width: '18%', height: '10%', rotate: 8, labelKey: 'gongti' },
+  { left: '42%', top: '63%', width: '21%', height: '9%', rotate: -5, labelKey: 'guomao' },
+  { left: '68%', top: '72%', width: '20%', height: '10%', rotate: 4, labelKey: 'shuangjing' },
 ];
 
 const placeLabels = [
-  { left: '13%', top: '48%', label: '太古里' },
-  { left: '48%', top: '47%', label: '亮马河' },
-  { left: '69%', top: '58%', label: 'CBD' },
-  { left: '25%', top: '84%', label: '东大桥' },
+  { left: '13%', top: '48%', labelKey: 'taikooli' },
+  { left: '48%', top: '47%', labelKey: 'liangmaRiver' },
+  { left: '69%', top: '58%', labelKey: 'cbd' },
+  { left: '25%', top: '84%', labelKey: 'dongdaqiao' },
 ];
 
 const mapPanLimit = {
@@ -132,6 +134,7 @@ function getRoadClass(type: string) {
 export default function MapView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { language, t } = useLanguage();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
@@ -178,16 +181,23 @@ export default function MapView() {
     return stores.filter((store) => {
       const matchesTag =
         selectedTags.size === 0 || store.tags.some((tag) => selectedTags.has(tag));
-      const searchable = `${store.name} ${store.address} ${store.category} ${store.tags.join(' ')}`;
+      const displayStore = localizeStore(store, language);
+      const searchable = `${displayStore.name} ${displayStore.address} ${displayStore.category} ${displayStore.tags.join(' ')}`;
       const matchesQuery =
         !normalizedQuery || searchable.toLowerCase().includes(normalizedQuery);
 
       return matchesTag && matchesQuery;
     });
-  }, [normalizedQuery, selectedTags]);
+  }, [language, normalizedQuery, selectedTags]);
 
-  const selectedStoreData = stores.find((store) => store.id === selectedStore);
-  const activeStore = selectedStoreData ?? filteredStores[0];
+  const selectedStoreData = selectedStore
+    ? stores.find((store) => store.id === selectedStore)
+    : undefined;
+  const activeStore = selectedStoreData
+    ? localizeStore(selectedStoreData, language)
+    : filteredStores[0]
+    ? localizeStore(filteredStores[0], language)
+    : undefined;
 
   const handleMapPointerDown = (event: PointerEvent<HTMLElement>) => {
     if ((event.target as HTMLElement).closest('button, input')) return;
@@ -239,7 +249,7 @@ export default function MapView() {
   return (
     <main className="tan-mobile-frame h-dvh bg-[#dfe9e4] text-[#14313a]">
       <section
-        aria-label="店铺地图"
+        aria-label={t('map')}
         className={`absolute inset-0 overflow-hidden bg-[#edf3ee] touch-none select-none ${
           isMapDragging ? 'cursor-grabbing' : 'cursor-grab'
         }`}
@@ -264,7 +274,7 @@ export default function MapView() {
 
           {districtBlocks.map((block) => (
             <div
-              key={block.label}
+              key={block.labelKey}
               className="absolute rounded-[18px] border border-white/55 bg-white/40 px-3 py-2 text-[11px] font-semibold text-[#6f817b] shadow-[0_1px_2px_rgba(71,85,105,0.08)] backdrop-blur-[1px]"
               style={{
                 left: block.left,
@@ -274,7 +284,7 @@ export default function MapView() {
                 transform: `rotate(${block.rotate}deg)`,
               }}
             >
-              {block.label}
+              {t(block.labelKey)}
             </div>
           ))}
 
@@ -298,11 +308,11 @@ export default function MapView() {
 
           {placeLabels.map((place) => (
             <span
-              key={place.label}
+              key={place.labelKey}
               className="absolute rounded-full bg-white/45 px-2.5 py-1 text-[11px] font-bold text-[#7b8c86] shadow-sm backdrop-blur-[2px]"
               style={{ left: place.left, top: place.top }}
             >
-              {place.label}
+              {t(place.labelKey)}
             </span>
           ))}
 
@@ -313,20 +323,21 @@ export default function MapView() {
           </div>
 
           {filteredStores.map((store, index) => {
-            const isSelected = selectedStore === store.id;
-            const meta = categoryMeta[store.category];
+            const displayStore = localizeStore(store, language);
+            const isSelected = selectedStore === displayStore.id;
+            const meta = categoryMeta[displayStore.category];
             const Icon = meta.Icon;
 
             return (
               <button
                 key={store.id}
                 type="button"
-                aria-label={`选择 ${store.name}`}
+                aria-label={`${t('chooseStore')} ${displayStore.name}`}
                 className="tan-pressable absolute z-20 flex min-h-11 min-w-11 -translate-x-1/2 -translate-y-full items-end justify-center"
                 style={getMarkerStyle(store, index)}
                 onClick={(event) => {
                   event.stopPropagation();
-                  setSelectedStore(store.id);
+                  setSelectedStore(displayStore.id);
                 }}
               >
                 <motion.span
@@ -336,7 +347,7 @@ export default function MapView() {
                 >
                   {isSelected && (
                     <span className="mb-1 max-w-[150px] rounded-full bg-white px-3 py-1.5 text-[12px] font-bold text-[#14313a] shadow-[0_8px_24px_rgba(15,23,42,0.18)]">
-                      {store.name}
+                      {displayStore.name}
                     </span>
                   )}
                   <span
@@ -356,7 +367,7 @@ export default function MapView() {
         <div className="pointer-events-auto flex items-center gap-3">
           <button
             type="button"
-            aria-label="返回"
+            aria-label={t('back')}
             onClick={() => navigate(-1)}
             className="tan-pressable grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white/92 text-[#14313a] shadow-[0_8px_24px_rgba(15,23,42,0.12)] backdrop-blur-xl"
           >
@@ -368,13 +379,13 @@ export default function MapView() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="搜索店铺、地点、标签"
+              placeholder={t('searchStorePlaceTag')}
               className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#14313a] outline-none placeholder:text-[#8c9b96]"
             />
             {(query || selectedTags.size > 0) && (
               <button
                 type="button"
-                aria-label="清除筛选"
+                aria-label={t('clearFilters')}
                 onClick={clearFilters}
                 className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#eef4f1] text-[#5f716b]"
               >
@@ -396,11 +407,11 @@ export default function MapView() {
               }`}
             >
               <SlidersHorizontal size={16} />
-              {selectedTags.size > 0 ? `筛选 ${selectedTags.size}` : '筛选'}
+              {selectedTags.size > 0 ? `${t('filter')} ${selectedTags.size}` : t('filter')}
             </button>
 
             <span className="rounded-full bg-white/86 px-3 py-2 text-[12px] font-extrabold text-[#64746f] shadow-[0_8px_22px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-              {selectedTags.size > 0 ? `${filteredStores.length} 个结果` : '全部地点'}
+              {selectedTags.size > 0 ? `${filteredStores.length} ${t('resultCount')}` : t('allPlaces')}
             </span>
 
             {selectedTags.size > 0 && (
@@ -409,7 +420,7 @@ export default function MapView() {
                 onClick={() => setSelectedTags(new Set())}
                 className="tan-pressable h-10 rounded-full bg-white/86 px-3 text-[12px] font-extrabold text-[#0d9488] shadow-[0_8px_22px_rgba(15,23,42,0.08)] backdrop-blur-xl"
               >
-                清除
+                {t('clear')}
               </button>
             )}
           </div>
@@ -425,14 +436,14 @@ export default function MapView() {
               >
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[12px] font-extrabold text-[#64746f]">
-                    标签筛选
+                    {t('tagFilter')}
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowAllTags(false)}
                     className="tan-pressable h-8 rounded-full bg-[#eef4f1] px-3 text-[12px] font-extrabold text-[#53645f]"
                   >
-                    收起
+                    {t('collapse')}
                   </button>
                 </div>
 
@@ -447,7 +458,7 @@ export default function MapView() {
                           : 'bg-[#eef4f1] text-[#53645f]'
                       }`}
                     >
-                      全部
+                      {t('all')}
                     </button>
 
                     {allTags.map((tag) => {
@@ -464,7 +475,7 @@ export default function MapView() {
                               : 'bg-[#eef4f1] text-[#53645f]'
                           }`}
                         >
-                          {tag}
+                          {localizeTag(tag, language)}
                         </button>
                       );
                     })}
@@ -478,10 +489,10 @@ export default function MapView() {
 
       <aside className="absolute right-4 top-[calc(150px+env(safe-area-inset-top))] z-30 flex flex-col gap-2">
         {[
-          { label: '定位', icon: LocateFixed },
-          { label: '放大', icon: Plus },
-          { label: '缩小', icon: Minus },
-          { label: '图层', icon: Layers },
+          { id: 'locate', label: t('locate'), icon: LocateFixed },
+          { id: 'zoomIn', label: t('zoomIn'), icon: Plus },
+          { id: 'zoomOut', label: t('zoomOut'), icon: Minus },
+          { id: 'layers', label: t('layers'), icon: Layers },
         ].map((item) => {
           const Icon = item.icon;
           return (
@@ -490,7 +501,7 @@ export default function MapView() {
               type="button"
               aria-label={item.label}
               onClick={() => {
-                if (item.label === '定位') {
+                if (item.id === 'locate') {
                   setMapOffset({ x: 0, y: 0 });
                 }
               }}
@@ -505,7 +516,7 @@ export default function MapView() {
       <div className="absolute left-4 top-[calc(150px+env(safe-area-inset-top))] z-30 rounded-2xl bg-white/88 px-3 py-2 shadow-[0_8px_22px_rgba(15,23,42,0.1)] backdrop-blur-xl">
         <div className="flex items-center gap-2 text-[12px] font-bold text-[#64746f]">
           <Building2 size={15} />
-          <span>{filteredStores.length} 个地点</span>
+          <span>{filteredStores.length} {t('placesUnit')}</span>
         </div>
       </div>
 
@@ -536,7 +547,7 @@ export default function MapView() {
                         {activeStore.name}
                       </h1>
                       <p className="text-[12px] font-bold text-[#7b8c86]">
-                        {categoryMeta[activeStore.category].label} · {activeStore.distance}km
+                        {t(categoryMeta[activeStore.category].labelKey)} · {activeStore.distance}km
                       </p>
                     </div>
                   </div>
@@ -548,7 +559,7 @@ export default function MapView() {
                 {selectedStoreData && (
                   <button
                     type="button"
-                    aria-label="关闭店铺详情"
+                    aria-label={t('closeStoreDetail')}
                     onClick={() => setSelectedStore(null)}
                     className="tan-pressable grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#eef4f1] text-[#5f716b]"
                   >
@@ -575,7 +586,7 @@ export default function MapView() {
                 </div>
                 <div className="flex min-h-11 items-center gap-2 rounded-2xl bg-[#f5f8f7] px-3">
                   <Route size={16} className="text-[#10bfa5]" />
-                  <span>{activeStore.distance}km · 约8分钟</span>
+                  <span>{activeStore.distance}km · {t('aroundEightMinutes')}</span>
                 </div>
               </div>
 
@@ -585,7 +596,7 @@ export default function MapView() {
                   onClick={() => navigate(`/store/${activeStore.id}`)}
                   className="tan-pressable flex h-13 flex-1 items-center justify-center rounded-2xl border border-[#dfe8e5] bg-white text-[15px] font-extrabold text-[#29454d]"
                 >
-                  查看详情
+                  {t('viewDetails')}
                 </button>
                 <button
                   type="button"
@@ -593,7 +604,7 @@ export default function MapView() {
                   className="tan-pressable flex h-13 flex-1 items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#16D6C3,#0EA896)] text-[15px] font-extrabold text-white shadow-[var(--tan-cta-shadow)]"
                 >
                   <Navigation size={18} />
-                  开始导航
+                  {t('startNavigation')}
                 </button>
               </div>
             </div>
@@ -607,16 +618,16 @@ export default function MapView() {
             className="absolute inset-x-0 bottom-0 z-50 px-4 pb-[calc(16px+env(safe-area-inset-bottom))]"
           >
             <div className="rounded-[28px] bg-white/96 p-5 text-center shadow-[0_-12px_36px_rgba(15,23,42,0.16)] backdrop-blur-2xl">
-              <p className="text-[18px] font-extrabold text-[#14313a]">没有找到匹配地点</p>
+              <p className="text-[18px] font-extrabold text-[#14313a]">{t('noMatchingPlaces')}</p>
               <p className="mt-1 text-[13px] font-medium text-[#6f817b]">
-                换一个关键词，或者清除筛选再看看。
+                {t('tryAnotherKeyword')}
               </p>
               <button
                 type="button"
                 onClick={clearFilters}
                 className="tan-pressable mt-4 h-12 rounded-2xl bg-[#10bfa5] px-6 text-[15px] font-extrabold text-white"
               >
-                清除筛选
+                {t('clearFilters')}
               </button>
             </div>
           </motion.section>

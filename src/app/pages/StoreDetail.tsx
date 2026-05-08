@@ -5,20 +5,24 @@ import { stores } from '../data/stores';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+import { useLanguage } from '../contexts/LanguageContext';
+import { localizeStore } from '../utils/storeI18n';
 
 export default function StoreDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { language, t } = useLanguage();
   const [saved, setSaved] = useState(false);
 
-  const store = stores.find((s) => s.id === id);
+  const storeSource = stores.find((s) => s.id === id);
+  const store = storeSource ? localizeStore(storeSource, language) : undefined;
 
   if (!store) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">店铺未找到</h1>
-          <Button onClick={() => navigate('/')}>返回首页</Button>
+          <h1 className="text-2xl font-bold mb-4">{t('storeNotFound')}</h1>
+          <Button onClick={() => navigate('/')}>{t('returnHome')}</Button>
         </div>
       </div>
     );
@@ -83,7 +87,7 @@ export default function StoreDetail() {
         </div>
 
         <div className="bg-white rounded-lg p-4">
-          <h2 className="font-semibold mb-2">推荐理由</h2>
+          <h2 className="font-semibold mb-2">{t('recommendedReason')}</h2>
           <p className="text-gray-700">{store.description}</p>
         </div>
 
@@ -120,11 +124,11 @@ export default function StoreDetail() {
           }}
         >
           <Share2 size={20} className="mr-2" />
-          分享
+          {t('share')}
         </Button>
         <Button className="flex-1">
           <Navigation size={20} className="mr-2" />
-          导航
+          {t('navigation')}
         </Button>
       </div>
     </div>

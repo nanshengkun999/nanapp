@@ -4,9 +4,21 @@ import MapView from './pages/MapView';
 import StoreDetail from './pages/StoreDetail';
 import SavedStores from './pages/SavedStores';
 import Services from './pages/Services';
+import ServiceProviderPage from './pages/ServiceProviderPage';
 import Forum from './pages/Forum';
 import Settings from './pages/Settings';
 import More from './pages/More';
+import { useLanguage } from './contexts/LanguageContext';
+
+function OrdersPlaceholder() {
+  const { t } = useLanguage();
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <p className="text-gray-500">{t('ordersComingSoon')}</p>
+    </div>
+  );
+}
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +42,10 @@ export const router = createBrowserRouter([
     Component: Services,
   },
   {
+    path: '/services/provider',
+    Component: ServiceProviderPage,
+  },
+  {
     path: '/forum',
     Component: Forum,
   },
@@ -43,10 +59,6 @@ export const router = createBrowserRouter([
   },
   {
     path: '/orders',
-    Component: () => (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">订单页面开发中...</p>
-      </div>
-    ),
+    Component: OrdersPlaceholder,
   },
 ]);
