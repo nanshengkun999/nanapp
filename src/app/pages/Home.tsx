@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
-  Bookmark,
-  CheckCircle2,
   Heart,
+  MessageCircle,
   Navigation,
   Search,
   Send,
@@ -276,7 +275,6 @@ export default function Home() {
               <h2 className="truncate text-[32px] font-extrabold leading-tight tracking-normal">
                 {displayStore.name}
               </h2>
-              <CheckCircle2 className="shrink-0 text-[#12D8C4]" size={25} fill="#12D8C4" />
             </div>
             <div className="mb-4 flex flex-wrap gap-2">
               {displayStore.tags.slice(0, 4).map((tag) => (
@@ -318,7 +316,7 @@ export default function Home() {
             active: savedStores.has(currentStore.id),
           },
           { label: '分享', icon: Share2, action: shareStore },
-          { label: '保存', icon: Bookmark, action: () => toggleSave(currentStore.id) },
+          { label: '评论', icon: MessageCircle, action: () => toast.info('评论功能即将开放') },
         ].map((action) => {
           const Icon = action.icon;
           return (
@@ -326,15 +324,15 @@ export default function Home() {
               key={action.label}
               type="button"
               onClick={action.action}
-              className="tan-pressable flex flex-col items-center gap-2 text-[15px] font-bold text-white"
+              className="tan-pressable flex min-h-[58px] min-w-[58px] flex-col items-center gap-2 text-[15px] font-bold text-white"
             >
-              <span className="grid h-16 w-16 place-items-center rounded-full bg-black/35 shadow-[0_8px_22px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-                <Icon
-                  size={31}
-                  strokeWidth={2}
-                  className={action.active ? 'fill-[#A7FFF4] text-[#A7FFF4]' : ''}
-                />
-              </span>
+              <Icon
+                size={34}
+                strokeWidth={2.2}
+                className={`drop-shadow-[0_3px_10px_rgba(0,0,0,0.45)] ${
+                  action.active ? 'fill-white text-white' : ''
+                }`}
+              />
               {action.label}
             </button>
           );
