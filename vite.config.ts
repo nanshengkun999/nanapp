@@ -33,7 +33,7 @@ export default defineConfig({
 
   server: {
     host: '0.0.0.0',
-    allowedHosts: ['*'],
+    allowedHosts: true,
   },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
