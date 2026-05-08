@@ -32,7 +32,7 @@ export const stores: Store[] = [
     hours: '09:00 - 22:00',
     lat: 39.9365,
     lng: 116.4477,
-    saved: false,
+    saved: true,
   },
   {
     id: '2',
@@ -47,7 +47,7 @@ export const stores: Store[] = [
     hours: '11:30 - 14:00, 17:30 - 22:00',
     lat: 39.9792,
     lng: 116.3269,
-    saved: false,
+    saved: true,
   },
   {
     id: '3',
@@ -137,7 +137,7 @@ export const stores: Store[] = [
     hours: '11:00 - 23:00',
     lat: 39.9375,
     lng: 116.4525,
-    saved: false,
+    saved: true,
   },
   {
     id: '12',
@@ -182,7 +182,7 @@ export const stores: Store[] = [
     hours: '09:30 - 19:00',
     lat: 39.9904,
     lng: 116.3408,
-    saved: false,
+    saved: true,
   },
   {
     id: '13',
@@ -242,7 +242,7 @@ export const stores: Store[] = [
     hours: '21:00 - 05:00',
     lat: 39.9365,
     lng: 116.4477,
-    saved: false,
+    saved: true,
   },
   {
     id: '16',
@@ -272,6 +272,6 @@ export const stores: Store[] = [
     hours: '19:00 - 01:00',
     lat: 39.9385,
     lng: 116.3837,
-    saved: false,
+    saved: true,
   },
 ];

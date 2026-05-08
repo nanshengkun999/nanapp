@@ -3,13 +3,11 @@ import { useNavigate, useSearchParams } from 'react-router';
 import {
   Bookmark,
   CheckCircle2,
-  Compass,
   Heart,
   Navigation,
   Search,
   Send,
   Share2,
-  Sparkles,
   Syringe,
   Utensils,
   Wine,
@@ -84,13 +82,14 @@ function getDisplayStore(store: Store) {
 export default function Home() {
   const [searchParams] = useSearchParams();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [savedStores, setSavedStores] = useState<Set<string>>(new Set());
+  const [savedStores, setSavedStores] = useState<Set<string>>(
+    () => new Set(stores.filter((store) => store.saved).map((store) => store.id))
+  );
   const [selectedCategory, setSelectedCategory] = useState<Category>(categories[0]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
-  const [showFavoritesList, setShowFavoritesList] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const touchStartY = useRef(0);
   const touchStartX = useRef(0);
@@ -131,8 +130,6 @@ export default function Home() {
   const displayStore = getDisplayStore(currentStore);
   const categoryIndex = getCategoryIndex(selectedCategory);
   const selectedMeta = categoryMeta[categoryIndex] ?? categoryMeta[0];
-  const savedStoresList = stores.filter((store) => savedStores.has(store.id)).map(getDisplayStore);
-
   const handleCategorySelect = (category: Category) => {
     setSelectedCategory(category);
     setSelectedTag(null);
@@ -345,21 +342,6 @@ export default function Home() {
       </div>
 
       <AnimatePresence>
-        {showFavoritesList && (
-          <FavoritesSheet
-            stores={savedStoresList}
-            onClose={() => setShowFavoritesList(false)}
-            onDiscover={() => setShowFavoritesList(false)}
-            onOpenStore={(storeId) => {
-              const nextIndex = filteredStores.findIndex((store) => store.id === storeId);
-              if (nextIndex !== -1) setCurrentIndex(nextIndex);
-              setShowFavoritesList(false);
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
         {showBookingModal && (
           <motion.div
             className="fixed inset-0 z-[90] flex items-end justify-center bg-black/50 px-4 pb-4 backdrop-blur-sm"
@@ -425,96 +407,11 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <MobileDock active={showFavoritesList ? 'favorites' : 'map'} onFavoritesClick={() => setShowFavoritesList(true)} />
+      <MobileDock active="map" />
     </main>
   );
 }
 
 function MapPinIcon() {
   return <Navigation size={23} className="text-[#27D9C6]" fill="#27D9C6" strokeWidth={1.8} />;
-}
-
-function FavoritesSheet({
-  stores: savedStores,
-  onClose,
-  onDiscover,
-  onOpenStore,
-}: {
-  stores: (Store & { tags: string[] })[];
-  onClose: () => void;
-  onDiscover: () => void;
-  onOpenStore: (storeId: string) => void;
-}) {
-  return (
-    <motion.div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/25 px-0 backdrop-blur-[3px]"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.section
-        className="tan-dark-sheet mb-[calc(104px+env(safe-area-inset-bottom))] w-full max-w-[480px] px-8 py-7"
-        initial={{ y: 110, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 110, opacity: 0 }}
-        transition={{ duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="mb-8 flex items-center justify-between">
-          <h2 className="text-[30px] font-extrabold">我的收藏</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="tan-pressable grid h-12 w-12 place-items-center rounded-full bg-white/12"
-          >
-            <X size={25} />
-          </button>
-        </div>
-
-        {savedStores.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-center">
-            <Heart size={66} className="mb-6 text-[#A7FFF4]" strokeWidth={1.8} />
-            <h3 className="text-[25px] font-bold">暂无收藏</h3>
-            <p className="mt-3 text-[16px] text-white/64">收藏喜欢的地点，稍后再看</p>
-            <div className="mt-9 flex w-full gap-3">
-              <button
-                type="button"
-                onClick={onDiscover}
-                className="tan-pressable flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/14 font-bold"
-              >
-                <Compass size={20} className="text-[#A7FFF4]" />
-                去发现美食
-              </button>
-              <button
-                type="button"
-                onClick={onDiscover}
-                className="tan-pressable flex h-12 flex-1 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/14 font-bold"
-              >
-                <Sparkles size={20} className="text-[#FF8068]" />
-                查看热门
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {savedStores.map((store) => (
-              <button
-                key={store.id}
-                type="button"
-                onClick={() => onOpenStore(store.id)}
-                className="tan-pressable flex w-full items-center justify-between rounded-[24px] border border-white/15 bg-white/12 p-4 text-left"
-              >
-                <span>
-                  <span className="block text-lg font-extrabold">{store.name}</span>
-                  <span className="mt-1 block text-sm text-white/60">{store.address}</span>
-                </span>
-                <Heart className="text-[#A7FFF4]" size={24} />
-              </button>
-            ))}
-          </div>
-        )}
-      </motion.section>
-    </motion.div>
-  );
 }

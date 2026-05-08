@@ -19,7 +19,7 @@ const items: {
   { id: 'favorites', label: '收藏', path: '/saved', icon: Heart },
   { id: 'services', label: '服务', path: '/services', icon: MapPin },
   { id: 'forum', label: '贴吧', path: '/forum', icon: MessageSquare },
-  { id: 'more', label: '更多', path: '/more', icon: MoreHorizontal },
+  { id: 'more', label: '我的', path: '/more', icon: MoreHorizontal },
 ];
 
 export default function MobileDock({ active, onFavoritesClick }: MobileDockProps) {

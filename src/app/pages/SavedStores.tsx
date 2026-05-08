@@ -1,74 +1,202 @@
-import { Compass, Flame, Heart, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Clock3,
+  Heart,
+  MapPin,
+  Music2,
+  Navigation,
+  Sparkles,
+  Utensils,
+  type LucideIcon,
+} from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
 import MobileDock from '../components/MobileDock';
+import { stores, type Category } from '../data/stores';
+
+const categoryMeta: Record<
+  Category,
+  {
+    Icon: LucideIcon;
+    label: string;
+    accent: string;
+    surface: string;
+  }
+> = {
+  美食: {
+    Icon: Utensils,
+    label: '餐饮收藏',
+    accent: 'bg-[#f97316]',
+    surface: 'from-[#fff4e8] to-white',
+  },
+  医美: {
+    Icon: Sparkles,
+    label: '医美预约',
+    accent: 'bg-[#ec4899]',
+    surface: 'from-[#fff0f7] to-white',
+  },
+  夜生活: {
+    Icon: Music2,
+    label: '夜生活',
+    accent: 'bg-[#6366f1]',
+    surface: 'from-[#f0f1ff] to-white',
+  },
+};
+
+const savedCategoryOrder: Category[] = ['美食', '医美', '夜生活'];
 
 export default function SavedStores() {
   const navigate = useNavigate();
+  const savedStores = stores.filter((store) => store.saved);
+  const categoryCounts = savedCategoryOrder.map((category) => ({
+    category,
+    count: savedStores.filter((store) => store.category === category).length,
+    meta: categoryMeta[category],
+  }));
 
   return (
-    <main className="tan-mobile-frame min-h-dvh bg-black text-white">
-      <img
-        src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1200&h=1800&fit=crop"
-        alt="咖啡背景"
-        className="absolute inset-0 h-full w-full object-cover blur-[2px]"
-      />
-      <div className="absolute inset-0 bg-black/42" />
-      <div className="absolute inset-x-0 top-0 z-10 px-6 pt-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[38px] font-extrabold leading-none">Tanmap</h1>
-          <button
-            type="button"
-            aria-label="关闭收藏页"
-            onClick={() => navigate('/')}
-            className="tan-pressable grid h-14 w-14 place-items-center rounded-full bg-white/12 text-white backdrop-blur-xl"
-          >
-            <X size={30} />
-          </button>
-        </div>
-      </div>
-
-      <motion.section
-        className="tan-dark-sheet absolute inset-x-0 bottom-[calc(110px+env(safe-area-inset-bottom))] z-20 mx-auto w-full max-w-[480px] px-8 py-8"
-        initial={{ y: 80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
-      >
-        <div className="mb-16 flex items-center justify-between">
-          <h2 className="text-[31px] font-extrabold">我的收藏</h2>
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="tan-pressable grid h-12 w-12 place-items-center rounded-full bg-white/12"
-          >
-            <X size={25} />
-          </button>
-        </div>
-
-        <div className="flex flex-col items-center text-center">
-          <Heart size={68} className="mb-7 text-[#A7FFF4]" strokeWidth={1.8} />
-          <h3 className="text-[27px] font-bold">暂无收藏</h3>
-          <p className="mt-3 text-[16px] text-white/64">收藏喜欢的地点，稍后再看</p>
-          <div className="mt-11 flex w-full gap-4">
+    <main className="tan-soft-page min-h-dvh">
+      <header className="sticky top-0 z-30 px-4 pt-[calc(12px+env(safe-area-inset-top))] pb-3">
+        <div className="rounded-[28px] border border-white/70 bg-white/78 p-3 shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+          <div className="flex items-center gap-3">
             <button
               type="button"
+              aria-label="返回首页"
               onClick={() => navigate('/')}
-              className="tan-pressable flex h-14 flex-1 items-center justify-center gap-3 rounded-full border border-white/20 bg-white/14 text-[16px] font-bold"
+              className="tan-pressable grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#eef7f5] text-[#29454d]"
             >
-              <Compass size={22} className="text-[#A7FFF4]" />
-              去发现美食
+              <ArrowLeft size={21} />
             </button>
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="tan-pressable flex h-14 flex-1 items-center justify-center gap-3 rounded-full border border-white/20 bg-white/14 text-[16px] font-bold"
-            >
-              <Flame size={22} className="text-[#FF8068]" />
-              查看热门
-            </button>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-extrabold leading-none text-[#10a696]">Tanmap</p>
+              <div className="mt-1 flex min-w-0 items-end gap-2">
+                <h1 className="truncate text-[27px] font-extrabold leading-none text-[#14313a]">
+                  我的收藏
+                </h1>
+                <span className="mb-0.5 shrink-0 rounded-full bg-[#e8f8f5] px-2.5 py-1 text-[12px] font-extrabold text-[#0d9488]">
+                  {savedStores.length} 个地点
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2 rounded-[22px] bg-[#f2f8f6] p-1.5">
+            {categoryCounts.map(({ category, count, meta }) => {
+              const Icon = meta.Icon;
+
+              return (
+                <div
+                  key={category}
+                  className="flex min-w-0 items-center gap-2 rounded-[18px] bg-white/72 px-2.5 py-2"
+                >
+                  <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-xl text-white ${meta.accent}`}>
+                    <Icon size={14} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-extrabold leading-none text-[#14313a]">{count}</p>
+                    <p className="mt-1 truncate text-[10px] font-bold leading-none text-[#7b8c86]">
+                      {category}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </motion.section>
+      </header>
+
+      <section className="px-5 pt-1 pb-[calc(112px+env(safe-area-inset-bottom))]">
+        {savedStores.length === 0 ? (
+          <div className="mt-20 flex flex-col items-center rounded-[28px] bg-white/88 px-7 py-12 text-center shadow-[var(--tan-shadow)]">
+            <Heart size={64} className="mb-6 text-[#8df5eb]" strokeWidth={1.8} />
+            <h2 className="text-[25px] font-extrabold text-[#14313a]">暂无收藏</h2>
+            <p className="mt-2 text-[15px] font-semibold text-[#7b8c86]">
+              收藏喜欢的地点，稍后再看。
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="tan-pressable mt-8 h-13 rounded-2xl bg-[#10bfa5] px-8 text-[16px] font-extrabold text-white shadow-[var(--tan-cta-shadow)]"
+            >
+              去发现地点
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {savedStores.map((store, index) => {
+              const meta = categoryMeta[store.category];
+              const Icon = meta.Icon;
+
+              return (
+                <motion.article
+                  key={store.id}
+                  className={`overflow-hidden rounded-[26px] bg-gradient-to-br ${meta.surface} shadow-[0_10px_26px_rgba(15,23,42,0.08)]`}
+                  initial={{ y: 18, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.22, delay: index * 0.035 }}
+                >
+                  <div className="w-full p-4 text-left">
+                    <div className="mb-3 flex items-start gap-3">
+                      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white ${meta.accent}`}>
+                        <Icon size={22} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h2 className="truncate text-[20px] font-extrabold leading-tight text-[#14313a]">
+                            {store.name}
+                          </h2>
+                          <Heart size={17} className="shrink-0 fill-[#10bfa5] text-[#10bfa5]" />
+                        </div>
+                        <p className="mt-1 text-[12px] font-extrabold text-[#0d9488]">
+                          {meta.label} · {store.distance}km
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="mb-3 flex items-start gap-2 text-[13px] font-semibold leading-5 text-[#5f716b]">
+                      <MapPin size={16} className="mt-0.5 shrink-0 text-[#10bfa5]" />
+                      <span>{store.address}</span>
+                    </p>
+
+                    <div className="mb-3 flex gap-2 overflow-x-auto tan-scrollbar-hide">
+                      {store.tags.slice(0, 4).map((tag) => (
+                        <span
+                          key={tag}
+                          className="shrink-0 rounded-full bg-white/78 px-3 py-1.5 text-[12px] font-extrabold text-[#53645f]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                      <div className="flex min-h-10 items-center gap-2 rounded-2xl bg-white/68 px-3 text-[12px] font-bold text-[#64746f]">
+                        <Clock3 size={15} className="text-[#10bfa5]" />
+                        <span className="truncate">{store.hours}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/store/${store.id}`)}
+                        className="tan-pressable h-10 rounded-2xl border border-[#dfe8e5] bg-white/78 px-3 text-[12px] font-extrabold text-[#29454d]"
+                      >
+                        详情
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/map?store=${store.id}`)}
+                        className="tan-pressable flex h-10 items-center gap-1.5 rounded-2xl bg-[#10bfa5] px-3 text-[12px] font-extrabold text-white"
+                      >
+                        <Navigation size={15} />
+                        地图
+                      </button>
+                    </div>
+                  </div>
+                </motion.article>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <MobileDock active="favorites" />
     </main>

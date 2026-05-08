@@ -98,111 +98,148 @@ const services: Service[] = [
 export default function Services() {
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>('地陪');
   const filteredServices = services.filter((service) => service.category === selectedCategory);
+  const selectedCategoryCount = filteredServices.length;
+  const averageRating =
+    filteredServices.reduce((sum, service) => sum + service.rating, 0) / selectedCategoryCount;
 
   return (
-    <main className="tan-soft-page">
-      <div className="tan-page-content">
-        <header className="mb-8 flex items-start justify-between">
-          <div>
-            <h1 className="text-[38px] font-extrabold leading-none tracking-normal text-[#073238]">
-              Tanmap
-            </h1>
-            <p className="mt-3 text-[16px] font-medium text-[#8A94A3]">
-              精选本地服务 · 让旅程更轻松
-            </p>
+    <main className="tan-soft-page min-h-dvh">
+      <div className="px-4 pt-[calc(18px+env(safe-area-inset-top))] pb-[calc(112px+env(safe-area-inset-bottom))]">
+        <header className="mb-4">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[13px] font-extrabold text-[#10a696]">Tanmap</p>
+              <h1 className="mt-1 text-[32px] font-extrabold leading-none text-[#073238]">
+                本地服务
+              </h1>
+              <p className="mt-2 text-[14px] font-semibold text-[#8A94A3]">
+                精选地陪、翻译、包车和旅拍修图
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="搜索服务"
+              className="tan-pressable grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-white/86 text-[#073238] shadow-[0_8px_22px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+            >
+              <Search size={27} strokeWidth={2.1} />
+            </button>
           </div>
-          <button
-            type="button"
-            aria-label="搜索服务"
-            className="tan-pressable tan-glass grid h-16 w-16 place-items-center rounded-full text-[#073238]"
-          >
-            <Search size={32} strokeWidth={2.1} />
-          </button>
+
+          <section className="rounded-[28px] border border-white/70 bg-white/76 p-2 shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="grid grid-cols-5 gap-1.5">
+              {serviceCategories.map((category) => {
+                const Icon = category.icon;
+                const active = selectedCategory === category.name;
+                const count = services.filter((service) => service.category === category.name).length;
+
+                return (
+                  <button
+                    key={category.name}
+                    type="button"
+                    onClick={() => setSelectedCategory(category.name)}
+                    className={`tan-pressable flex min-h-[66px] min-w-0 flex-col items-center justify-center gap-1 rounded-[20px] px-1 text-[12px] font-extrabold ${
+                      active
+                        ? 'bg-[#10BFA5] text-white shadow-[0_10px_22px_rgba(18,184,166,0.22)]'
+                        : 'bg-[#F2F8F6] text-[#52645f]'
+                    }`}
+                  >
+                    <Icon size={20} />
+                    <span className="leading-none">{category.name}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
+                        active ? 'bg-white/22 text-white' : 'bg-white/78 text-[#8A94A3]'
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-2 grid grid-cols-3 gap-2 rounded-[22px] bg-[#F2F8F6] p-2">
+              <div>
+                <p className="text-[11px] font-bold text-[#8A94A3]">当前分类</p>
+                <p className="mt-1 text-[14px] font-extrabold text-[#073238]">{selectedCategory}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-[#8A94A3]">可预约</p>
+                <p className="mt-1 text-[14px] font-extrabold text-[#073238]">
+                  {selectedCategoryCount} 项
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold text-[#8A94A3]">均分</p>
+                <p className="mt-1 flex items-center gap-1 text-[14px] font-extrabold text-[#F5A400]">
+                  <Star size={14} fill="#F5A400" />
+                  {averageRating.toFixed(1)}
+                </p>
+              </div>
+            </div>
+          </section>
         </header>
 
-        <section className="tan-glass mb-8 flex gap-3 overflow-x-auto rounded-[34px] p-3 tan-scrollbar-hide">
-          {serviceCategories.map((category) => {
-            const Icon = category.icon;
-            const active = selectedCategory === category.name;
-            return (
-              <button
-                key={category.name}
-                type="button"
-                onClick={() => setSelectedCategory(category.name)}
-                className={`tan-pressable flex h-14 shrink-0 items-center gap-2 rounded-[24px] px-5 text-[17px] font-extrabold ${
-                  active
-                    ? 'bg-[#10BFA5] text-white shadow-[0_10px_24px_rgba(18,184,166,0.22)]'
-                    : 'bg-white/75 text-[#4B5563]'
-                }`}
-              >
-                <Icon size={23} />
-                {category.name}
-              </button>
-            );
-          })}
-        </section>
-
-        <section className="space-y-6">
+        <section className="space-y-4">
           {filteredServices.map((service, index) => (
             <motion.article
               key={service.id}
-              className="tan-card tan-enter p-5"
+              className="overflow-hidden rounded-[28px] border border-white/72 bg-white/90 p-4 shadow-[0_10px_28px_rgba(15,23,42,0.08)] backdrop-blur-xl"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.04 }}
             >
-              <div className="flex gap-5">
+              <div className="flex gap-4">
                 <img
                   src={service.image}
                   alt={service.name}
-                  className="h-[136px] w-28 shrink-0 rounded-[22px] object-cover"
+                  className="h-[118px] w-[98px] shrink-0 rounded-[22px] object-cover shadow-[0_8px_18px_rgba(15,23,42,0.12)]"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-[24px] font-extrabold leading-tight text-[#073238]">
+                  <div className="mb-2 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h2 className="text-[21px] font-extrabold leading-tight text-[#073238]">
                         {service.name}
                       </h2>
-                      <div className="mt-2 flex items-center gap-3 text-[17px] text-[#667085]">
-                        <span>{service.provider}</span>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold text-[#667085]">
+                        <span className="truncate">{service.provider}</span>
                         <span className="flex items-center gap-1 font-bold text-[#F5A400]">
-                          <Star size={19} fill="#F5A400" />
+                          <Star size={15} fill="#F5A400" />
                           {service.rating}
                         </span>
                       </div>
                     </div>
-                    <strong className="shrink-0 text-[24px] font-extrabold text-[#0EA896]">
+                    <strong className="shrink-0 text-[20px] font-extrabold leading-tight text-[#0EA896]">
                       {service.price}
                     </strong>
                   </div>
-                  <p className="mt-4 text-[17px] leading-relaxed text-[#5F6B7A]">
+                  <p className="line-clamp-3 text-[14px] font-medium leading-5 text-[#5F6B7A]">
                     {service.description}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {service.tags.map((tag, tagIndex) => (
                   <span
                     key={tag}
-                    className="flex items-center gap-2 rounded-xl bg-[#EAF8F5] px-4 py-2 text-[14px] font-bold text-[#0B8F82]"
+                    className="flex min-h-9 items-center gap-1.5 rounded-xl bg-[#EAF8F5] px-3 text-[12px] font-extrabold text-[#0B8F82]"
                   >
-                    {tagIndex === 0 ? <ShieldCheck size={18} /> : <MessageCircleHeart size={18} />}
+                    {tagIndex === 0 ? <ShieldCheck size={15} /> : <MessageCircleHeart size={15} />}
                     {tag}
                   </span>
                 ))}
               </div>
 
-              <div className="mt-6 grid grid-cols-[1fr_0.42fr] gap-4">
+              <div className="mt-4 grid grid-cols-[1fr_0.42fr] gap-3">
                 <button
                   type="button"
-                  className="tan-pressable h-14 rounded-[18px] bg-[linear-gradient(135deg,#12B8A6,#0EA896)] text-[18px] font-extrabold text-white shadow-[var(--tan-cta-shadow)]"
+                  className="tan-pressable h-12 rounded-[18px] bg-[linear-gradient(135deg,#12B8A6,#0EA896)] text-[16px] font-extrabold text-white shadow-[var(--tan-cta-shadow)]"
                 >
                   立即预约
                 </button>
                 <button
                   type="button"
-                  className="tan-pressable h-14 rounded-[18px] border border-[#12B8A6]/35 bg-white text-[18px] font-extrabold text-[#0EA896]"
+                  className="tan-pressable h-12 rounded-[18px] border border-[#12B8A6]/35 bg-white text-[16px] font-extrabold text-[#0EA896]"
                 >
                   详情
                 </button>
