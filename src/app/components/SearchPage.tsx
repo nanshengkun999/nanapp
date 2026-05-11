@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, Search } from 'lucide-react';
+import { ArrowLeft, MapPin, Search } from 'lucide-react';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import type { Category, Store } from '../data/stores';
@@ -59,6 +59,14 @@ export default function SearchPage({
         <div className="absolute inset-0 bg-black/40 backdrop-blur-xl" />
         <div className="relative flex h-full flex-col justify-between px-3 py-3">
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-label={t('back')}
+              onClick={onClose}
+              className="tan-pressable grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-white"
+            >
+              <ArrowLeft size={20} />
+            </button>
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={17} />
               <Input

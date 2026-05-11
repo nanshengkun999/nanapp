@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import MobileDock from '../components/MobileDock';
 import { stores, type Category } from '../data/stores';
 import { useLanguage } from '../contexts/LanguageContext';
 import { localizeStore } from '../utils/storeI18n';
@@ -109,7 +108,7 @@ export default function SavedStores() {
         </div>
       </header>
 
-      <section className="px-5 pt-1 pb-[calc(112px+env(safe-area-inset-bottom))]">
+      <section className="px-5 pt-1 pb-[calc(28px+env(safe-area-inset-bottom))]">
         {savedStores.length === 0 ? (
           <div className="mt-20 flex flex-col items-center rounded-[28px] bg-white/88 px-7 py-12 text-center shadow-[var(--tan-shadow)]">
             <Heart size={64} className="mb-6 text-[#8df5eb]" strokeWidth={1.8} />
@@ -201,8 +200,6 @@ export default function SavedStores() {
           </div>
         )}
       </section>
-
-      <MobileDock active="favorites" />
     </main>
   );
 }

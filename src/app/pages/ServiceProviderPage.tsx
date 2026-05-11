@@ -1,5 +1,6 @@
 import { Fragment, useState, type ComponentType } from 'react';
 import {
+  ArrowLeft,
   CalendarDays,
   Camera,
   Check,
@@ -17,7 +18,7 @@ import {
   Stethoscope,
   UserRound,
 } from 'lucide-react';
-import MobileDock from '../components/MobileDock';
+import { useNavigate } from 'react-router';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type ProviderStatus = 'accepting' | 'reservation_only' | 'paused';
@@ -85,6 +86,7 @@ const iconMap: Record<ServiceIcon, ComponentType<{ size?: number; strokeWidth?: 
 };
 
 export default function ServiceProviderPage() {
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const [status, setStatus] = useState<ProviderStatus>('accepting');
   const [services, setServices] = useState<ProviderService[]>(initialServices);
@@ -133,22 +135,30 @@ export default function ServiceProviderPage() {
 
   return (
     <main className="tan-soft-page min-h-dvh">
-      <div className="px-4 pt-[calc(16px+env(safe-area-inset-top))] pb-[calc(88px+env(safe-area-inset-bottom))]">
-        <header className="mb-4 flex items-start justify-between gap-3">
+      <div className="px-3 pt-[calc(10px+env(safe-area-inset-top))] pb-[calc(28px+env(safe-area-inset-bottom))]">
+        <header className="mb-2 grid grid-cols-[38px_1fr_40px] items-start gap-2.5">
+          <button
+            type="button"
+            aria-label={t('back')}
+            onClick={() => navigate('/services')}
+            className="tan-pressable grid h-9 w-9 place-items-center rounded-full bg-white/90 text-[#073238] shadow-[0_8px_18px_rgba(15,23,42,0.07)]"
+          >
+            <ArrowLeft size={19} />
+          </button>
           <div className="min-w-0">
-            <h1 className="text-[32px] font-extrabold leading-none tracking-normal text-[#073238]">
+            <h1 className="text-[27px] font-extrabold leading-none tracking-normal text-[#073238]">
               Tanmap
             </h1>
-            <p className="mt-2 text-[13px] font-semibold leading-5 text-[#66789A]">
+            <p className="mt-1 text-[12px] font-semibold leading-4 text-[#66789A]">
               {t('providerSubtitle')}
             </p>
           </div>
           <button
             type="button"
             aria-label={t('searchServices')}
-            className="tan-pressable grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/90 text-[#073238] shadow-[0_8px_20px_rgba(15,23,42,0.08)]"
+            className="tan-pressable grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/90 text-[#073238] shadow-[0_8px_18px_rgba(15,23,42,0.07)]"
           >
-            <Search size={22} />
+            <Search size={19} />
           </button>
         </header>
 
@@ -162,6 +172,7 @@ export default function ServiceProviderPage() {
 
         <MyServicesCard
           services={services}
+          t={t}
           onToggleService={handleToggleService}
           onEditService={handleEditService}
           onAddService={handleAddService}
@@ -172,7 +183,6 @@ export default function ServiceProviderPage() {
         <PublishFlowCard />
       </div>
 
-      <MobileDock active="services" />
     </main>
   );
 }
@@ -193,31 +203,31 @@ function ServiceIdentityCard({
   const { t } = useLanguage();
 
   return (
-    <section className="mb-3 rounded-[24px] bg-white/92 p-4 shadow-[0_10px_26px_rgba(15,23,42,0.06)]">
-      <div className="mb-4 flex items-center gap-3">
+    <section className="mb-2 rounded-[20px] bg-white/92 p-3 shadow-[0_8px_22px_rgba(15,23,42,0.055)]">
+      <div className="mb-2.5 flex items-center gap-2.5">
         <img
           src={userProfile.avatar}
           alt={t(userProfile.nameKey)}
-          className="h-14 w-14 shrink-0 rounded-full object-cover"
+          className="h-11 w-11 shrink-0 rounded-[16px] object-cover"
         />
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex min-w-0 items-center gap-2">
-            <h2 className="truncate text-[20px] font-extrabold text-[#102A43]">{t('providerIdentity')}</h2>
+          <div className="mb-0.5 flex min-w-0 items-center gap-1.5">
+            <h2 className="truncate text-[17px] font-extrabold text-[#102A43]">{t('providerIdentity')}</h2>
             {userProfile.verified && (
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#DDF8F3] px-2 py-1 text-[10px] font-extrabold text-[#0EA896]">
-                <ShieldCheck size={13} fill="#0EA896" className="text-[#0EA896]" />
+              <span className="flex shrink-0 items-center gap-1 rounded-full bg-[#DDF8F3] px-1.5 py-0.5 text-[9px] font-extrabold text-[#0EA896]">
+                <ShieldCheck size={11} fill="#0EA896" className="text-[#0EA896]" />
                 {t('verified')}
               </span>
             )}
           </div>
-          <p className="line-clamp-1 text-[12px] font-semibold text-[#66789A]">{t(userProfile.subtitleKey)}</p>
+          <p className="line-clamp-1 text-[11px] font-semibold text-[#66789A]">{t(userProfile.subtitleKey)}</p>
         </div>
-        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[22px] bg-[linear-gradient(135deg,#B8FFF3,#6EE7D8)] text-white shadow-[0_10px_24px_rgba(16,191,165,0.18)]">
-          <Check size={30} strokeWidth={3} />
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[18px] bg-[linear-gradient(135deg,#B8FFF3,#6EE7D8)] text-white shadow-[0_8px_20px_rgba(16,191,165,0.16)]">
+          <Check size={24} strokeWidth={3} />
         </span>
       </div>
 
-      <h3 className="mb-2 text-[16px] font-extrabold text-[#102A43]">{t('orderStatus')}</h3>
+      <h3 className="mb-1.5 text-[14px] font-extrabold text-[#102A43]">{t('orderStatus')}</h3>
       <StatusSelector value={status} onChange={onStatusChange} />
 
       <ScheduleSettings
@@ -240,7 +250,7 @@ function StatusSelector({
   const { t } = useLanguage();
 
   return (
-    <div className="mb-3 grid grid-cols-3 rounded-full border border-[#E5EEEA] bg-white p-1 shadow-[inset_0_1px_6px_rgba(15,23,42,0.04)]">
+    <div className="mb-2 grid grid-cols-3 rounded-full border border-[#E5EEEA] bg-white p-0.5 shadow-[inset_0_1px_6px_rgba(15,23,42,0.04)]">
       {statusOptions.map((option) => {
         const active = value === option.id;
         return (
@@ -248,14 +258,14 @@ function StatusSelector({
             key={option.id}
             type="button"
             onClick={() => onChange(option.id)}
-            className={`tan-pressable flex h-10 items-center justify-center gap-1.5 rounded-full text-[12px] font-extrabold ${
+            className={`tan-pressable flex h-9 items-center justify-center gap-1 rounded-full text-[11px] font-extrabold ${
               active ? 'border border-[#10BFA5] bg-[#EAFBF8] text-[#0EA896]' : 'text-[#7A8CA0]'
             }`}
           >
             {active ? (
-              <span className="h-2.5 w-2.5 rounded-full bg-[#10BFA5]" />
+              <span className="h-2 w-2 rounded-full bg-[#10BFA5]" />
             ) : (
-              <Circle size={12} />
+              <Circle size={11} />
             )}
             {t(option.labelKey)}
           </button>
@@ -275,15 +285,15 @@ function ScheduleSettings({
   const { t } = useLanguage();
 
   return (
-    <div className="mb-3 rounded-[20px] border border-[#E5EEEA] bg-white/70 p-3">
-      <h3 className="mb-2 text-[14px] font-extrabold text-[#102A43]">{t('scheduleSettings')}</h3>
+    <div className="mb-2 rounded-[18px] border border-[#E5EEEA] bg-white/70 p-2">
+      <h3 className="mb-1.5 text-[13px] font-extrabold text-[#102A43]">{t('scheduleSettings')}</h3>
       <ScheduleRow
         icon={Clock3}
         title={t('autoOpen')}
         subtitle={t('autoOpenDesc')}
         onClick={onAutoOpenSchedule}
       />
-      <div className="my-2 h-px bg-[#E5EEEA]" />
+      <div className="my-1.5 h-px bg-[#E5EEEA]" />
       <ScheduleRow
         icon={CalendarDays}
         title={t('reservationTime')}
@@ -307,14 +317,14 @@ function ScheduleRow({
 }) {
   return (
     <button type="button" onClick={onClick} className="tan-pressable flex w-full items-center gap-3 text-left">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#DDF8F3] text-[#0EA896]">
-        <Icon size={20} />
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#DDF8F3] text-[#0EA896]">
+        <Icon size={18} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-extrabold text-[#102A43]">{title}</span>
-        <span className="mt-0.5 block truncate text-[12px] font-semibold text-[#66789A]">{subtitle}</span>
+        <span className="block truncate text-[13px] font-extrabold text-[#102A43]">{title}</span>
+        <span className="mt-0.5 block truncate text-[10px] font-semibold text-[#66789A]">{subtitle}</span>
       </span>
-      <ChevronRight size={18} className="text-[#7E90B2]" />
+      <ChevronRight size={16} className="text-[#7E90B2]" />
     </button>
   );
 }
@@ -323,20 +333,20 @@ function StatsPanel({ onMyOrders }: { onMyOrders: () => void }) {
   const { t } = useLanguage();
 
   return (
-    <div className="grid grid-cols-3 gap-2 rounded-[20px] bg-[#F8FBFA] p-2">
+    <div className="grid grid-cols-3 gap-1.5 rounded-[18px] bg-[#F8FBFA] p-1.5">
       <StatBlock icon={Eye} label={t('todayViews')} value={stats.todayViews} />
       <StatBlock icon={MessageCircle} label={t('consultations')} value={stats.consultations} />
       <button
         type="button"
         onClick={onMyOrders}
-        className="tan-pressable flex min-w-0 items-center justify-center gap-2 rounded-[16px] border border-[#10BFA5] bg-white/72 p-2 text-[#0EA896]"
+        className="tan-pressable flex min-w-0 items-center justify-center gap-1.5 rounded-[15px] border border-[#10BFA5] bg-white/72 p-1.5 text-[#0EA896]"
       >
-        <FileText size={18} />
+        <FileText size={15} />
         <span>
-          <span className="block text-[11px] font-bold text-[#66789A]">{t('myOrders')}</span>
-          <span className="block text-[20px] font-extrabold leading-none">{stats.orders}</span>
+          <span className="block text-[10px] font-bold text-[#66789A]">{t('myOrders')}</span>
+          <span className="block text-[18px] font-extrabold leading-none">{stats.orders}</span>
         </span>
-        <ChevronRight size={15} />
+        <ChevronRight size={13} />
       </button>
     </div>
   );
@@ -351,19 +361,18 @@ function StatBlock({
   label: string;
   value: number;
 }) {
-  const { t } = useLanguage();
-
   return (
-    <div className="flex min-w-0 flex-col items-center justify-center rounded-[16px] bg-white/62 p-2 text-center">
-      <Icon size={18} className="text-[#7E90B2]" />
-      <span className="mt-1 text-[11px] font-bold text-[#66789A]">{label}</span>
-      <span className="text-[20px] font-extrabold leading-none text-[#0EA896]">{value}</span>
+    <div className="flex min-w-0 flex-col items-center justify-center rounded-[15px] bg-white/62 p-1.5 text-center">
+      <Icon size={15} className="text-[#7E90B2]" />
+      <span className="mt-0.5 text-[10px] font-bold text-[#66789A]">{label}</span>
+      <span className="text-[18px] font-extrabold leading-none text-[#0EA896]">{value}</span>
     </div>
   );
 }
 
 function MyServicesCard({
   services,
+  t,
   onToggleService,
   onEditService,
   onAddService,
@@ -371,6 +380,7 @@ function MyServicesCard({
   onTips,
 }: {
   services: ProviderService[];
+  t: (key: string) => string;
   onToggleService: (serviceId: number) => void;
   onEditService: (serviceId: number) => void;
   onAddService: () => void;
@@ -378,21 +388,21 @@ function MyServicesCard({
   onTips: () => void;
 }) {
   return (
-    <section className="mb-3 rounded-[24px] bg-white/92 p-4 shadow-[0_10px_26px_rgba(15,23,42,0.06)]">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-[20px] font-extrabold text-[#102A43]">{t('myServices')}</h2>
+    <section className="mb-2 rounded-[20px] bg-white/92 p-3 shadow-[0_8px_22px_rgba(15,23,42,0.055)]">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-[17px] font-extrabold text-[#102A43]">{t('myServices')}</h2>
         <button
           type="button"
           onClick={onTips}
-          className="tan-pressable flex items-center gap-1 text-[12px] font-bold text-[#66789A]"
+          className="tan-pressable flex items-center gap-1 text-[11px] font-bold text-[#66789A]"
         >
           {t('tips')}
-          <HelpCircle size={14} />
-          <ChevronRight size={15} />
+          <HelpCircle size={13} />
+          <ChevronRight size={14} />
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-[20px] border border-[#E5EEEA]">
+      <div className="overflow-hidden rounded-[18px] border border-[#E5EEEA]">
         {services.map((service, index) => (
           <ServiceItem
             key={service.id}
@@ -404,21 +414,21 @@ function MyServicesCard({
         ))}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2.5">
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={onAddService}
-          className="tan-pressable flex h-11 items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(135deg,#12B8A6,#0EA896)] text-[15px] font-extrabold text-white shadow-[var(--tan-cta-shadow)]"
+          className="tan-pressable flex h-10 items-center justify-center gap-1.5 rounded-[15px] bg-[linear-gradient(135deg,#12B8A6,#0EA896)] text-[13px] font-extrabold text-white shadow-[var(--tan-cta-shadow)]"
         >
-          <Plus size={18} />
+          <Plus size={16} />
           {t('addService')}
         </button>
         <button
           type="button"
           onClick={onEditServiceCard}
-          className="tan-pressable flex h-11 items-center justify-center gap-2 rounded-[16px] border border-[#10BFA5] bg-white text-[15px] font-extrabold text-[#0EA896]"
+          className="tan-pressable flex h-10 items-center justify-center gap-1.5 rounded-[15px] border border-[#10BFA5] bg-white text-[13px] font-extrabold text-[#0EA896]"
         >
-          <Edit3 size={17} />
+          <Edit3 size={15} />
           {t('editServiceCard')}
         </button>
       </div>
@@ -450,24 +460,24 @@ function ServiceItem({
     <button
       type="button"
       onClick={onEdit}
-      className={`tan-pressable flex w-full items-center gap-3 p-3 text-left ${
+      className={`tan-pressable flex w-full items-center gap-2.5 p-2.5 text-left ${
         withDivider ? 'border-b border-[#E5EEEA]' : ''
       }`}
     >
-      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${tone}`}>
-        <Icon size={22} />
+      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${tone}`}>
+        <Icon size={18} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[16px] font-extrabold text-[#102A43]">{t(service.titleKey)}</span>
-        <span className="mt-1 flex gap-1.5">
+        <span className="block truncate text-[14px] font-extrabold text-[#102A43]">{t(service.titleKey)}</span>
+        <span className="mt-0.5 flex gap-1">
           {service.tagKeys.map((tag) => (
-            <span key={tag} className="rounded-md bg-[#DDF8F3] px-1.5 py-0.5 text-[10px] font-bold text-[#0EA896]">
+            <span key={tag} className="rounded-md bg-[#DDF8F3] px-1.5 py-0.5 text-[9px] font-bold text-[#0EA896]">
               {t(tag)}
             </span>
           ))}
         </span>
       </span>
-      <span className="shrink-0 text-[16px] font-extrabold text-[#0EA896]">{t(service.priceKey)}</span>
+      <span className="shrink-0 text-[14px] font-extrabold text-[#0EA896]">{t(service.priceKey)}</span>
       <span
         role="switch"
         aria-checked={service.enabled}
@@ -475,17 +485,17 @@ function ServiceItem({
           event.stopPropagation();
           onToggle();
         }}
-        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+        className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${
           service.enabled ? 'bg-[#10BFA5]' : 'bg-[#E5E7EB]'
         }`}
       >
         <span
-          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            service.enabled ? 'translate-x-6' : 'translate-x-1'
+          className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+            service.enabled ? 'translate-x-5' : 'translate-x-1'
           }`}
         />
       </span>
-      <ChevronRight size={18} className="shrink-0 text-[#8A9AB0]" />
+      <ChevronRight size={16} className="shrink-0 text-[#8A9AB0]" />
     </button>
   );
 }
@@ -499,30 +509,30 @@ function PublishFlowCard() {
   ];
 
   return (
-    <section className="rounded-[24px] bg-white/88 p-4 shadow-[0_10px_26px_rgba(15,23,42,0.05)]">
-      <h2 className="mb-3 flex items-center gap-2 text-[18px] font-extrabold text-[#102A43]">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-[#10BFA5] text-white">
-          <FileText size={15} />
+    <section className="rounded-[20px] bg-white/88 p-3 shadow-[0_8px_22px_rgba(15,23,42,0.045)]">
+      <h2 className="mb-2 flex items-center gap-1.5 text-[16px] font-extrabold text-[#102A43]">
+        <span className="grid h-5 w-5 place-items-center rounded-md bg-[#10BFA5] text-white">
+          <FileText size={13} />
         </span>
         {t('publishFlow')}
       </h2>
       <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-2">
         {steps.map((step, index) => (
           <Fragment key={step.title}>
-            <div className="rounded-[16px] bg-[#F8FBFA] p-2 text-center">
-              <span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-[#10BFA5] text-[12px] font-extrabold text-white">
+            <div className="rounded-[14px] bg-[#F8FBFA] p-1.5 text-center">
+              <span className="mx-auto grid h-5 w-5 place-items-center rounded-full bg-[#10BFA5] text-[11px] font-extrabold text-white">
                 {index + 1}
               </span>
-              <p className="mt-1 text-[13px] font-extrabold text-[#102A43]">{step.title}</p>
-              <p className="mt-0.5 text-[10px] font-semibold text-[#66789A]">{step.desc}</p>
+              <p className="mt-1 text-[11px] font-extrabold text-[#102A43]">{step.title}</p>
+              <p className="mt-0.5 text-[9px] font-semibold text-[#66789A]">{step.desc}</p>
             </div>
             {index < steps.length - 1 && (
-              <ChevronRight size={16} className="text-[#7E90B2]" />
+              <ChevronRight size={14} className="text-[#7E90B2]" />
             )}
           </Fragment>
         ))}
       </div>
-      <p className="mt-3 text-center text-[11px] font-semibold text-[#66789A]">
+      <p className="mt-2 text-center text-[10px] font-semibold text-[#66789A]">
         {t('identityPrivacyNote')}
       </p>
     </section>

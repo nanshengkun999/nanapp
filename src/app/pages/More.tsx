@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   Bell,
   CheckCircle2,
   ChevronRight,
@@ -13,7 +14,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import MobileDock from '../components/MobileDock';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const stats = [
@@ -70,9 +70,17 @@ export default function More() {
 
   return (
     <main className="tan-soft-page min-h-dvh">
-      <div className="px-4 pt-[calc(14px+env(safe-area-inset-top))] pb-[calc(88px+env(safe-area-inset-bottom))]">
-        <header className="mb-2.5 flex items-center justify-between">
-          <div>
+      <div className="px-4 pt-[calc(14px+env(safe-area-inset-top))] pb-[calc(28px+env(safe-area-inset-bottom))]">
+        <header className="mb-2.5 grid grid-cols-[40px_1fr_40px] items-center gap-2">
+          <button
+            type="button"
+            aria-label={t('back')}
+            onClick={() => navigate('/')}
+            className="tan-pressable grid h-10 w-10 place-items-center rounded-full bg-white/86 text-[#14313a] shadow-[0_8px_22px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="min-w-0">
             <h1 className="text-[28px] font-extrabold leading-none tracking-normal text-[#14313a]">
               {t('moreTitle')}
             </h1>
@@ -167,7 +175,6 @@ export default function More() {
         </section>
       </div>
 
-      <MobileDock active="more" />
     </main>
   );
 }

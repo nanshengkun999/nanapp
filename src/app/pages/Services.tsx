@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ClipboardList, Edit3, Plus, Search, UserRound } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { ArrowLeft, ClipboardList, Edit3, Plus, Search, UserRound } from 'lucide-react';
+import { Link, useNavigate } from 'react-router';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
-import MobileDock from '../components/MobileDock';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type ServiceCategory = 'all' | 'localGuide' | 'translation' | 'medicalCompanion' | 'pickup' | 'photoCompanion';
@@ -63,8 +62,8 @@ const people: ServicePerson[] = [
 ];
 
 export default function Services() {
-  const navigate = useNavigate();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>('all');
   const [showMenu, setShowMenu] = useState(false);
 
@@ -79,8 +78,16 @@ export default function Services() {
 
   return (
     <main className="tan-soft-page min-h-dvh bg-[#F7FAF9]">
-      <div className="px-4 pt-[calc(18px+env(safe-area-inset-top))] pb-[calc(96px+env(safe-area-inset-bottom))]">
-        <header className="mb-2.5 flex items-start justify-between gap-3">
+      <div className="px-4 pt-[calc(18px+env(safe-area-inset-top))] pb-[calc(28px+env(safe-area-inset-bottom))]">
+        <header className="mb-2.5 grid grid-cols-[40px_1fr_44px] items-start gap-2.5">
+          <button
+            type="button"
+            aria-label={t('returnHome')}
+            onClick={() => navigate('/')}
+            className="tan-pressable grid h-10 w-10 place-items-center rounded-full bg-white/88 text-[#073238] shadow-[0_8px_22px_rgba(15,23,42,0.08)] backdrop-blur-xl"
+          >
+            <ArrowLeft size={20} />
+          </button>
           <div className="min-w-0">
             <h1 className="text-[25px] font-extrabold leading-tight tracking-normal text-[#073238]">
               {t('servicesTitle')}
@@ -176,7 +183,7 @@ export default function Services() {
       </div>
 
       <div
-        className="fixed bottom-[calc(88px+env(safe-area-inset-bottom))] z-[70]"
+        className="fixed bottom-[calc(22px+env(safe-area-inset-bottom))] z-[95]"
         style={{ right: 'max(18px, calc((100vw - 402px) / 2 + 18px))' }}
       >
         <AnimatePresence>
@@ -188,30 +195,22 @@ export default function Services() {
               transition={{ duration: 0.18 }}
               className="mb-2.5 w-[144px] rounded-[20px] border border-white/80 bg-white/95 p-1.5 shadow-[0_10px_26px_rgba(15,23,42,0.12)] backdrop-blur-xl"
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setShowMenu(false);
-                  console.log('publish service');
-                  navigate('/services/provider');
-                }}
+              <Link
+                to="/services/provider"
+                onClick={() => setShowMenu(false)}
                 className="tan-pressable flex h-10 w-full items-center gap-2.5 rounded-[15px] px-2.5 text-[13px] font-extrabold text-[#073238]"
               >
                 <Edit3 size={16} className="text-[#10BFA5]" />
                 {t('publishService')}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowMenu(false);
-                  console.log('manage service');
-                  navigate('/services/provider');
-                }}
+              </Link>
+              <Link
+                to="/services/provider"
+                onClick={() => setShowMenu(false)}
                 className="tan-pressable flex h-10 w-full items-center gap-2.5 rounded-[15px] px-2.5 text-[13px] font-extrabold text-[#073238]"
               >
                 <ClipboardList size={16} className="text-[#10BFA5]" />
                 {t('manageService')}
-              </button>
+              </Link>
             </motion.div>
           )}
         </AnimatePresence>
@@ -225,8 +224,6 @@ export default function Services() {
           {showMenu ? <UserRound size={21} /> : <Plus size={24} />}
         </button>
       </div>
-
-      <MobileDock active="services" />
     </main>
   );
 }

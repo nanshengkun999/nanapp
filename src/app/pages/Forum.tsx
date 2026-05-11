@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ComponentType } from 'react';
 import {
+  ArrowLeft,
   Bell,
   Building2,
   Filter,
@@ -15,7 +16,7 @@ import {
   Star,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import MobileDock from '../components/MobileDock';
+import { useNavigate } from 'react-router';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface Post {
@@ -108,6 +109,7 @@ const posts: Post[] = [
 
 export default function Forum() {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'latest' | 'hot'>('latest');
   const [selectedBar, setSelectedBar] = useState<string | null>(null);
@@ -115,7 +117,15 @@ export default function Forum() {
   return (
     <main className="tan-soft-page">
       <div className="tan-page-content">
-        <header className="mb-4 grid grid-cols-[auto_1fr_auto] items-center gap-2.5">
+        <header className="mb-4 grid grid-cols-[40px_auto_1fr_auto] items-center gap-2.5">
+          <button
+            type="button"
+            aria-label={t('returnHome')}
+            onClick={() => navigate('/')}
+            className="tan-pressable grid h-10 w-10 place-items-center rounded-full bg-white/80 text-[#073238] shadow-[0_8px_22px_rgba(15,23,42,0.07)] backdrop-blur-xl"
+          >
+            <ArrowLeft size={20} />
+          </button>
           <h1 className="text-[24px] font-extrabold text-[#073238]">Tanmap</h1>
           <label className="tan-glass flex h-10 min-w-0 items-center gap-2 rounded-[20px] px-3">
             <Search className="shrink-0 text-[#8A94A3]" size={18} />
@@ -261,8 +271,6 @@ export default function Forum() {
           ))}
         </section>
       </div>
-
-      <MobileDock active="forum" />
     </main>
   );
 }

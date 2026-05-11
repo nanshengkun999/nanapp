@@ -2,22 +2,23 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import type { TouchEvent } from 'react';
 import {
-  Briefcase,
+  ChevronLeft,
+  ChevronRight,
   Heart,
+  House,
   MapPin,
-  MessageCircle,
-  MoreHorizontal,
-  Navigation,
   Play,
   Search,
   Send,
   Share2,
+  Star,
   Utensils,
-  Video,
+  Volume2,
+  VolumeX,
+  UsersRound,
   WandSparkles,
   Wine,
   X,
-  type LucideIcon,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -28,12 +29,89 @@ import { categories, stores, type Category, type Store } from '../data/stores';
 import { localizeStore } from '../utils/storeI18n';
 
 type ViewMode = 'video' | 'map';
+type ContentCategoryId = 'food' | 'medical' | 'nightlife';
+type PreloadKind = 'vertical' | 'channel';
+
+type PreloadedVideo = {
+  video: HTMLVideoElement;
+  storeId: string;
+  channelId: ContentCategoryId;
+  index: number;
+  kind: PreloadKind;
+};
 
 const categoryMeta = [
   { labelKey: 'food', icon: Utensils },
   { labelKey: 'beauty', icon: WandSparkles },
   { labelKey: 'nightlife', icon: Wine },
 ];
+
+const mapHomeTab = { id: 'map', labelKey: 'map', type: 'map' } as const;
+
+const contentHomeTabs = [
+  { id: 'food', labelKey: 'food', categoryIndex: 0, type: 'content' },
+  { id: 'medical', labelKey: 'beauty', categoryIndex: 1, type: 'content' },
+  { id: 'nightlife', labelKey: 'nightlife', categoryIndex: 2, type: 'content' },
+] as const;
+
+function normalizeHomeCategory(value: string | null): ContentCategoryId {
+  if (value === 'medical' || value === 'beauty') return 'medical';
+  if (value === 'nightlife') return 'nightlife';
+  return 'food';
+}
+
+function getInitialHomeCategory(): ContentCategoryId {
+  if (typeof window === 'undefined') return 'food';
+  return normalizeHomeCategory(window.localStorage.getItem('tanmapHomeCategory'));
+}
+
+function getCategoryByContentId(categoryId: ContentCategoryId): Category {
+  const tab = contentHomeTabs.find((item) => item.id === categoryId) ?? contentHomeTabs[0];
+  return categories[tab.categoryIndex];
+}
+
+function getContentIdByCategory(category: Category): ContentCategoryId {
+  const categoryIndex = categories.indexOf(category);
+  return contentHomeTabs.find((tab) => tab.categoryIndex === categoryIndex)?.id ?? 'food';
+}
+
+function getPreloadOffsets() {
+  if (typeof navigator === 'undefined') return [-1, 0, 1, 2, 3];
+
+  const connection = (
+    navigator as Navigator & {
+      connection?: {
+        effectiveType?: string;
+        saveData?: boolean;
+        type?: string;
+      };
+    }
+  ).connection;
+  const effectiveType = connection?.effectiveType ?? '';
+  const isPoorNetwork =
+    connection?.saveData === true ||
+    effectiveType === 'slow-2g' ||
+    effectiveType === '2g';
+
+  return isPoorNetwork ? [-1, 0, 1] : [-1, 0, 1, 2, 3];
+}
+
+function createPreloadVideo(store: Store) {
+  const video = document.createElement('video');
+  video.src = store.videoUrl;
+  video.preload = 'auto';
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.load();
+  return video;
+}
+
+function disposePreloadVideo(video: HTMLVideoElement) {
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+}
 
 type LocalizedStoreDisplay = {
   name: Record<Language, string>;
@@ -110,11 +188,17 @@ export default function Home() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { language, t } = useLanguage();
+  const initialHomeCategory = getInitialHomeCategory();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedCategory, setSelectedCategory] = useState<Category>(categories[0]);
+  const [homeCategory, setHomeCategory] = useState<ContentCategoryId>(initialHomeCategory);
+  const [selectedCategory, setSelectedCategory] = useState<Category>(() => getCategoryByContentId(initialHomeCategory));
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('video');
   const [isPaused, setIsPaused] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [preloadIndexes, setPreloadIndexes] = useState<Set<number>>(() => new Set([0, 1, 2, 3]));
   const [showFavoritesSheet, setShowFavoritesSheet] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
@@ -123,11 +207,27 @@ export default function Home() {
     () => new Set(stores.filter((store) => store.saved).map((store) => store.id))
   );
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
+  const itemRefs = useRef<Map<number, HTMLElement>>(new Map());
+  const preloadedVideosRef = useRef<Map<string, PreloadedVideo>>(new Map());
   const touchStartY = useRef(0);
   const touchStartX = useRef(0);
 
   useEffect(() => {
     const shareId = searchParams.get('share');
+    const requestedMode = searchParams.get('mode');
+    const shouldOpenSearch = searchParams.get('search') === '1';
+
+    if (requestedMode === 'map') {
+      setViewMode('map');
+      setIsPaused(true);
+    }
+
+    if (shouldOpenSearch) {
+      setIsSearchOpen(true);
+    }
+
     if (!shareId) return;
     const storeIndex = stores.findIndex((store) => store.id === shareId);
     if (storeIndex !== -1) {
@@ -155,20 +255,6 @@ export default function Home() {
   const currentStore = filteredStores[currentIndex] ?? filteredStores[0] ?? stores[0];
   const displayStore = getDisplayStore(currentStore, language, t);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || viewMode !== 'video') return;
-
-    if (isPaused) {
-      video.pause();
-      return;
-    }
-
-    video.play().catch(() => {
-      setIsPaused(true);
-    });
-  }, [currentStore.id, isPaused, viewMode]);
-
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
     stores
@@ -187,11 +273,160 @@ export default function Home() {
     [language, savedStores, t]
   );
 
+  const orderedHomeTabs = useMemo(() => {
+    const homeTab = contentHomeTabs.find((tab) => tab.id === homeCategory) ?? contentHomeTabs[0];
+    return [mapHomeTab, homeTab, ...contentHomeTabs.filter((tab) => tab.id !== homeTab.id)];
+  }, [homeCategory]);
+
+  const currentChannel = getContentIdByCategory(selectedCategory);
+
+  const preloadVideo = (index: number) => {
+    const store = filteredStores[index];
+    if (!store) return null;
+
+    setPreloadIndexes((previous) => {
+      if (previous.has(index)) return previous;
+      const next = new Set(previous);
+      next.add(index);
+      return next;
+    });
+
+    const video = videoRefs.current.get(index);
+    if (!video) return null;
+
+    if (!video.getAttribute('src')) {
+      video.src = store.videoUrl;
+      video.preload = 'auto';
+      video.load();
+    }
+    return video;
+  };
+
+  const releaseVideo = (index: number) => {
+    setPreloadIndexes((previous) => {
+      if (!previous.has(index)) return previous;
+      const next = new Set(previous);
+      next.delete(index);
+      return next;
+    });
+
+    const video = videoRefs.current.get(index);
+    if (!video) return;
+    disposePreloadVideo(video);
+  };
+
+  const preloadNextChannel = (channelId: ContentCategoryId) => {
+    const currentTabIndex = orderedHomeTabs.findIndex((tab) => tab.type === 'content' && tab.id === channelId);
+    const nextTab = orderedHomeTabs.slice(currentTabIndex + 1).find((tab) => tab.type === 'content');
+    if (!nextTab) return null;
+
+    const nextCategory = categories[nextTab.categoryIndex];
+    const nextStores = stores.filter((store) => store.category === nextCategory);
+    const nextIndex = Math.min(currentIndex, Math.max(0, nextStores.length - 1));
+    const store = nextStores[nextIndex];
+    if (!store) return null;
+
+    const key = `channel:${nextTab.id}:${nextIndex}`;
+    const existing = preloadedVideosRef.current.get(key);
+    if (existing?.storeId === store.id) return existing.video;
+
+    if (existing) {
+      disposePreloadVideo(existing.video);
+      preloadedVideosRef.current.delete(key);
+    }
+
+    const video = createPreloadVideo(store);
+    preloadedVideosRef.current.set(key, {
+      video,
+      storeId: store.id,
+      channelId: nextTab.id,
+      index: nextIndex,
+      kind: 'channel',
+    });
+    return video;
+  };
+
+  const updatePreloadWindow = (nextIndex: number, nextChannel: ContentCategoryId) => {
+    if (viewMode === 'map') {
+      preloadedVideosRef.current.forEach((entry) => disposePreloadVideo(entry.video));
+      preloadedVideosRef.current.clear();
+      return;
+    }
+
+    const keepIndexes = new Set<number>();
+    getPreloadOffsets().forEach((offset) => {
+      const preloadIndex = nextIndex + offset;
+      if (preloadIndex < 0 || preloadIndex >= filteredStores.length) return;
+      keepIndexes.add(preloadIndex);
+      preloadVideo(preloadIndex);
+    });
+
+    setPreloadIndexes(keepIndexes);
+
+    videoRefs.current.forEach((video, index) => {
+      if (keepIndexes.has(index)) return;
+      disposePreloadVideo(video);
+    });
+
+    const keepChannelKeys = new Set<string>();
+    const nextChannelVideo = preloadNextChannel(nextChannel);
+    if (nextChannelVideo) {
+      preloadedVideosRef.current.forEach((entry, key) => {
+        if (entry.kind === 'channel' && entry.video === nextChannelVideo) keepChannelKeys.add(key);
+      });
+    }
+
+    preloadedVideosRef.current.forEach((entry, key) => {
+      if (keepChannelKeys.has(key)) return;
+      disposePreloadVideo(entry.video);
+      preloadedVideosRef.current.delete(key);
+    });
+  };
+
   const handleCategorySelect = (category: Category) => {
     setSelectedCategory(category);
     setSelectedTag(null);
     setCurrentIndex(0);
-    setIsPaused(true);
+    setIsPaused(false);
+    setViewMode('video');
+    setIsSearchOpen(false);
+    setShowFavoritesSheet(false);
+  };
+
+  const handleHomeTabSelect = (tabIndex: number) => {
+    const normalizedIndex = (tabIndex + orderedHomeTabs.length) % orderedHomeTabs.length;
+    const tab = orderedHomeTabs[normalizedIndex];
+
+    setIsSearchOpen(false);
+    setShowFavoritesSheet(false);
+
+    if (tab.type === 'map') {
+      setViewMode('map');
+      setIsPaused(true);
+      return;
+    }
+
+    const nextCategory = categories[tab.categoryIndex];
+    setViewMode('video');
+    setSelectedCategory(nextCategory);
+    setSelectedTag(null);
+    setCurrentIndex(0);
+    setIsPaused(false);
+  };
+
+  const handleSetHomeCategory = (categoryId: ContentCategoryId | 'map') => {
+    if (categoryId === 'map') return;
+    const nextCategory = getCategoryByContentId(categoryId);
+
+    setHomeCategory(categoryId);
+    window.localStorage.setItem('tanmapHomeCategory', categoryId);
+    setViewMode('video');
+    setSelectedCategory(nextCategory);
+    setSelectedTag(null);
+    setCurrentIndex(0);
+    setIsPaused(false);
+    setIsSearchOpen(false);
+    setShowFavoritesSheet(false);
   };
 
   const handleTouchStart = (event: TouchEvent) => {
@@ -200,31 +435,16 @@ export default function Home() {
   };
 
   const handleTouchEnd = (event: TouchEvent) => {
-    if (viewMode !== 'video') return;
-
     const diffY = touchStartY.current - event.changedTouches[0].clientY;
     const diffX = touchStartX.current - event.changedTouches[0].clientX;
 
-    if (isPaused && Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 48) {
-      const currentCategoryIndex = categories.indexOf(selectedCategory);
-      const nextIndex =
-        diffX > 0
-          ? (currentCategoryIndex + 1) % categories.length
-          : (currentCategoryIndex - 1 + categories.length) % categories.length;
-      handleCategorySelect(categories[nextIndex]);
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 52) {
+      const nextTabIndex = diffX > 0 ? activeHomeTabIndex + 1 : activeHomeTabIndex - 1;
+      handleHomeTabSelect(nextTabIndex);
       return;
     }
 
-    if (Math.abs(diffY) > 54) {
-      if (diffY > 0 && currentIndex < filteredStores.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-        setIsPaused(false);
-      }
-      if (diffY < 0 && currentIndex > 0) {
-        setCurrentIndex(currentIndex - 1);
-        setIsPaused(false);
-      }
-    }
+    if (viewMode !== 'video') return;
   };
 
   const toggleSave = (storeId: string) => {
@@ -277,18 +497,47 @@ export default function Home() {
   };
 
   const handleOpenFavorites = () => {
+    setIsSearchOpen(false);
     setShowFavoritesSheet(true);
   };
 
   const handleOpenSearch = () => {
+    if (isSearchOpen) {
+      setIsSearchOpen(false);
+      setShowFavoritesSheet(false);
+      setViewMode('video');
+      setIsPaused(false);
+      navigate('/', { replace: true });
+      return;
+    }
+    setShowFavoritesSheet(false);
+    setViewMode('video');
     setIsSearchOpen(true);
   };
 
   const handleOpenMap = () => {
+    if (isSearchOpen || showFavoritesSheet) {
+      setIsSearchOpen(false);
+      setShowFavoritesSheet(false);
+      setViewMode('video');
+      setIsPaused(false);
+      navigate('/', { replace: true });
+      return;
+    }
     handleMapToggle();
   };
 
   const handleGoHere = () => {
+    if (viewMode === 'map') {
+      setIsSearchOpen(false);
+      setShowFavoritesSheet(false);
+      setViewMode('video');
+      setIsPaused(false);
+      navigate('/', { replace: true });
+      return;
+    }
+    setIsSearchOpen(false);
+    setShowFavoritesSheet(false);
     setViewMode('map');
     setIsPaused(true);
   };
@@ -305,6 +554,104 @@ export default function Home() {
     navigate('/forum');
   };
 
+  const handleVideoPlay = (index: number) => {
+    const video = videoRefs.current.get(index);
+    if (!video || viewMode !== 'video') return;
+
+    video.muted = isMuted;
+    video.play().catch(() => {
+      setIsPaused(true);
+    });
+  };
+
+  const handleVideoPause = (index: number) => {
+    videoRefs.current.get(index)?.pause();
+  };
+
+  const handleVideoChange = (index: number) => {
+    if (index === currentIndex) return;
+    setCurrentIndex(index);
+    setVideoProgress(0);
+    setIsPaused(false);
+  };
+
+  const handleVideoTimeUpdate = () => {
+    const video = videoRef.current;
+    if (!video || !video.duration || isScrubbing) return;
+    setVideoProgress((video.currentTime / video.duration) * 100);
+  };
+
+  const handleVideoSeek = (value: number) => {
+    const video = videoRef.current;
+    setVideoProgress(value);
+    if (!video || !video.duration) return;
+    video.currentTime = (video.duration * value) / 100;
+  };
+
+  const activeHomeTabIndex =
+    viewMode === 'map'
+      ? 0
+      : Math.max(1, orderedHomeTabs.findIndex((tab) => tab.type === 'content' && categories[tab.categoryIndex] === selectedCategory));
+
+  useEffect(() => {
+    videoRef.current = videoRefs.current.get(currentIndex) ?? null;
+  }, [currentIndex, filteredStores]);
+
+  useEffect(() => {
+    if (viewMode !== 'video') return;
+    videoRefs.current.forEach((video, index) => {
+      video.muted = isMuted;
+      if (index === currentIndex && !isPaused) {
+        handleVideoPlay(index);
+      } else {
+        handleVideoPause(index);
+      }
+    });
+  }, [currentIndex, isMuted, isPaused, viewMode, preloadIndexes]);
+
+  useEffect(() => {
+    if (viewMode !== 'video') return;
+    const container = scrollContainerRef.current;
+    const activeItem = itemRefs.current.get(currentIndex);
+    if (!container || !activeItem) return;
+
+    const expectedTop = currentIndex * container.clientHeight;
+    if (Math.abs(container.scrollTop - expectedTop) < 3) return;
+    activeItem.scrollIntoView({ block: 'start', behavior: 'auto' });
+  }, [currentIndex, selectedCategory, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== 'video') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.7) return;
+          const index = Number((entry.target as HTMLElement).dataset.index);
+          if (Number.isNaN(index)) return;
+          handleVideoChange(index);
+        });
+      },
+      {
+        root: scrollContainerRef.current,
+        threshold: [0, 0.7, 1],
+      }
+    );
+
+    itemRefs.current.forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, [filteredStores, viewMode, currentIndex]);
+
+  useEffect(() => {
+    updatePreloadWindow(currentIndex, currentChannel);
+  }, [currentIndex, currentChannel, filteredStores, orderedHomeTabs, viewMode]);
+
+  useEffect(() => {
+    return () => {
+      preloadedVideosRef.current.forEach((entry) => disposePreloadVideo(entry.video));
+      preloadedVideosRef.current.clear();
+    };
+  }, []);
+
   return (
     <main
       className="tan-mobile-frame h-dvh bg-black text-white"
@@ -314,31 +661,60 @@ export default function Home() {
       <AnimatePresence mode="wait">
         {viewMode === 'video' ? (
           <motion.div
-            key={`${currentStore.id}-${selectedCategory}`}
+            key={`video-feed-${selectedCategory}`}
             className="absolute inset-0"
             initial={{ opacity: 0.55, scale: 1.02 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.32 }}
           >
-            <video
-              ref={videoRef}
-              src={currentStore.videoUrl}
-              className="h-full w-full object-cover"
-              muted
-              loop
-              playsInline
-              autoPlay
-              preload="metadata"
-              onClick={() => setIsPaused((previous) => !previous)}
-            />
-            {isPaused && (
-              <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                <span className="grid h-11 w-11 place-items-center rounded-full bg-black/28 text-white backdrop-blur-md">
-                  <Play size={22} fill="white" />
-                </span>
-              </div>
-            )}
+            <div
+              ref={scrollContainerRef}
+              className="h-full w-full snap-y snap-mandatory overflow-y-scroll overscroll-contain tan-scrollbar-hide"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {filteredStores.map((store, index) => {
+                const shouldLoadVideo = preloadIndexes.has(index);
+
+                return (
+                  <section
+                    key={`${store.id}-${selectedCategory}`}
+                    ref={(node) => {
+                      if (node) {
+                        itemRefs.current.set(index, node);
+                      } else {
+                        itemRefs.current.delete(index);
+                      }
+                    }}
+                    data-index={index}
+                    className="relative h-dvh w-full snap-start snap-always overflow-hidden bg-black"
+                  >
+                    <video
+                      ref={(node) => {
+                        if (node) {
+                          videoRefs.current.set(index, node);
+                          if (index === currentIndex) videoRef.current = node;
+                        } else {
+                          videoRefs.current.delete(index);
+                        }
+                      }}
+                      src={shouldLoadVideo ? store.videoUrl : undefined}
+                      className="absolute left-0 top-0 h-full w-full object-cover"
+                      muted={isMuted}
+                      loop
+                      playsInline
+                      autoPlay={index === currentIndex && !isPaused}
+                      preload={shouldLoadVideo ? 'auto' : 'none'}
+                      onTimeUpdate={index === currentIndex ? handleVideoTimeUpdate : undefined}
+                      onLoadedMetadata={index === currentIndex ? handleVideoTimeUpdate : undefined}
+                      onClick={() => {
+                        if (index === currentIndex) setIsPaused((previous) => !previous);
+                      }}
+                    />
+                  </section>
+                );
+              })}
+            </div>
           </motion.div>
         ) : (
           <motion.div
@@ -354,153 +730,266 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {viewMode === 'video' && (
+      {viewMode === 'video' && isPaused && (
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              aria-label={isMuted ? t('unmuteVideo') : t('muteVideo')}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsMuted((previous) => !previous);
+              }}
+              className="tan-pressable pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-white/22 bg-black/36 text-white backdrop-blur-md"
+            >
+              {isMuted ? <VolumeX size={22} /> : <Volume2 size={22} />}
+            </button>
+            <button
+              type="button"
+              aria-label={t('playVideo')}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsPaused(false);
+              }}
+              className="tan-pressable pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-white/22 bg-black/36 text-white backdrop-blur-md"
+            >
+              <Play size={24} fill="white" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!isSearchOpen && (
         <>
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.72),rgba(0,0,0,0.18),transparent_58%)]" />
-          <header className="absolute inset-x-0 top-0 z-20 px-4 pt-[calc(18px+env(safe-area-inset-top))]">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.78),rgba(0,0,0,0.12)_44%,rgba(0,0,0,0.46)_100%)]" />
+          <header className="absolute inset-x-0 top-0 z-40 px-5 pt-[calc(12px+env(safe-area-inset-top))]">
             <div className="flex items-center justify-between">
-              <h1 className="text-[23px] font-extrabold leading-none tracking-normal drop-shadow-lg">
-                Tanmap
-              </h1>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label={t('services')}
-                  onClick={handleOpenService}
-                  className="tan-pressable flex h-9 items-center gap-1.5 rounded-full border border-white/12 bg-black/35 px-3 text-[12px] font-extrabold text-white shadow-[0_8px_18px_rgba(0,0,0,0.18)] backdrop-blur-md"
-                >
-                  <Briefcase size={15} strokeWidth={2.1} />
-                  {t('services')}
-                </button>
-                <button
-                  type="button"
-                  aria-label={t('forum')}
-                  onClick={handleOpenCommunity}
-                  className="tan-pressable flex h-9 items-center gap-1.5 rounded-full border border-white/12 bg-black/35 px-3 text-[12px] font-extrabold text-white shadow-[0_8px_18px_rgba(0,0,0,0.18)] backdrop-blur-md"
-                >
-                  <MessageCircle size={15} strokeWidth={2.1} />
-                  {t('forum')}
-                </button>
-              </div>
+              {viewMode === 'map' ? (
+                <span className="h-9 w-20" aria-hidden="true" />
+              ) : (
+                <h1 className="text-[22px] font-extrabold leading-none tracking-normal text-[#79E5C4] drop-shadow-lg">
+                  Tanmap
+                </h1>
+              )}
+              {viewMode === 'map' ? (
+                <span className="h-9 w-20" aria-hidden="true" />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenMore}
+                    className="tan-pressable h-9 rounded-full border border-white/24 bg-black/10 px-3 text-[12px] font-semibold text-white backdrop-blur-sm"
+                  >
+                    {t('homeMy')}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t('search')}
+                    onClick={handleOpenSearch}
+                    className="tan-pressable grid h-9 w-9 place-items-center rounded-full border border-white/32 bg-black/12 text-white shadow-[0_6px_18px_rgba(0,0,0,0.2)] backdrop-blur-sm"
+                  >
+                    <Search size={18} strokeWidth={1.9} />
+                  </button>
+                </div>
+              )}
             </div>
 
-            <AnimatePresence>
-              {isPaused && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
-                  transition={{ duration: 0.22 }}
-                  className="tan-glass mt-4 grid grid-cols-3 rounded-[22px] p-0.5"
-                  style={{ background: 'rgba(255,255,255,0.28)' }}
-                >
-                  {categories.map((category, index) => {
-                    const meta = categoryMeta[index] ?? categoryMeta[0];
-                    const Icon = meta.icon;
-                    const isActive = selectedCategory === category;
+            <div className="mt-4 grid grid-cols-[22px_1fr_22px] items-center gap-1 text-white">
+              <button
+                type="button"
+                aria-label={t('previousCategory')}
+                onClick={() => handleHomeTabSelect(activeHomeTabIndex - 1)}
+                className="tan-pressable grid h-7 w-6 place-items-center text-white/62"
+              >
+                <ChevronLeft size={23} strokeWidth={2.1} />
+              </button>
+              <nav className="grid grid-cols-4 items-start" aria-label="Tanmap categories">
+                {orderedHomeTabs.map((tab, index) => {
+                  const isActive = activeHomeTabIndex === index;
+                  const isContentTab = tab.type === 'content';
+                  const isHomeCategory = isContentTab && tab.id === homeCategory;
 
-                    return (
+                  return (
+                    <div
+                      key={tab.id}
+                      className="relative flex h-11 flex-col items-center justify-start"
+                    >
                       <button
-                        key={category}
                         type="button"
-                        onClick={() => handleCategorySelect(category)}
-                        className={`tan-pressable relative flex h-9 items-center justify-center gap-1 rounded-[20px] text-[12px] font-extrabold ${
-                          isActive ? 'text-[#0AAE9E]' : 'text-white/90'
+                        onClick={() => handleHomeTabSelect(index)}
+                        className={`tan-pressable flex h-8 flex-col items-center justify-start text-[15px] font-semibold tracking-normal ${
+                          isActive ? 'text-white' : 'text-white/60'
                         }`}
                       >
+                        <span>{t(tab.labelKey)}</span>
                         {isActive && (
                           <motion.span
-                            layoutId="category-pill"
-                            className="absolute inset-0 rounded-[20px] bg-white/90 shadow-[0_8px_20px_rgba(255,255,255,0.16)]"
-                            transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+                            layoutId="home-category-underline"
+                            className="mt-1 h-0.5 w-8 rounded-full bg-[#62E0B0] shadow-[0_0_12px_rgba(98,224,176,0.7)]"
+                            transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
                           />
                         )}
-                        <Icon className="relative" size={16} strokeWidth={2.2} />
-                        <span className="relative">{t(meta.labelKey)}</span>
                       </button>
-                    );
-                  })}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      {viewMode === 'video' && isPaused && isContentTab && (
+                        <button
+                          type="button"
+                          aria-label={`${t('setHomeCategory')}: ${t(tab.labelKey)}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleSetHomeCategory(tab.id);
+                          }}
+                          className={`tan-pressable absolute top-7 grid h-5 w-5 place-items-center rounded-full transition-colors ${
+                            isHomeCategory
+                              ? 'text-[#62E0B0] drop-shadow-[0_0_8px_rgba(98,224,176,0.75)]'
+                              : 'text-white/72'
+                          }`}
+                        >
+                          <House size={14} fill="currentColor" strokeWidth={2} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+              <button
+                type="button"
+                aria-label={t('nextCategory')}
+                onClick={() => handleHomeTabSelect(activeHomeTabIndex + 1)}
+                className="tan-pressable grid h-7 w-6 place-items-center text-white/62"
+              >
+                <ChevronRight size={23} strokeWidth={2.1} />
+              </button>
+            </div>
           </header>
 
-          <section className="absolute bottom-[calc(82px+env(safe-area-inset-bottom))] left-4 right-3 z-20">
-            <div className="mb-3 flex items-end justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <h2 className="mb-2 truncate text-[20px] font-extrabold leading-tight tracking-normal">
+          <div className="absolute right-2 top-[calc(156px+env(safe-area-inset-top))] z-40 w-[74px] text-white">
+            <button
+              type="button"
+              onClick={handleOpenService}
+              className="tan-pressable block h-8 w-full text-left text-[12px] font-semibold leading-8 text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+            >
+              {t('variousServices')}
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenCommunity}
+              className="tan-pressable block h-8 w-full text-left text-[12px] font-semibold leading-8 text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+            >
+              {t('exploreBar')}
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenFavorites}
+              className="tan-pressable block h-8 w-full text-left text-[12px] font-semibold leading-8 text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+            >
+              {t('favoritesFolder')}
+            </button>
+          </div>
+
+          {viewMode === 'video' && (
+            <section className="absolute inset-x-0 bottom-[calc(18px+env(safe-area-inset-bottom))] z-30 px-3">
+              <div className="mb-4 max-w-[82%]">
+                <h2 className="mb-1.5 truncate text-[30px] font-extrabold leading-tight tracking-normal text-white drop-shadow-[0_3px_16px_rgba(0,0,0,0.45)]">
                   {displayStore.name}
                 </h2>
-                <div className="mb-2 flex flex-wrap gap-1">
+                <p className="mb-2 flex items-center gap-1.5 truncate text-[13px] font-medium text-white/82">
+                  <MapPin size={15} className="shrink-0" />
+                  <span className="truncate">{displayStore.address}</span>
+                </p>
+                {displayStore.description && (
+                  <p className="mb-3 line-clamp-1 text-[13px] font-medium text-white/78">
+                    {displayStore.description}
+                  </p>
+                )}
+                <div className="flex gap-2 overflow-x-auto tan-scrollbar-hide">
                   {displayStore.tags.slice(0, 4).map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full border border-white/30 bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-md"
+                      className="shrink-0 rounded-[11px] border border-white/24 bg-black/18 px-3 py-1.5 text-[12px] font-medium text-white/86 backdrop-blur-md"
                     >
                       {tag}
                     </span>
                   ))}
                 </div>
-                <p className="flex items-center gap-1 text-[12px] font-semibold text-white/84">
-                  <Navigation size={14} className="text-[#27D9C6]" fill="#27D9C6" />
-                  <span>{displayStore.distance}km</span>
-                  <span className="text-white/55">|</span>
-                  <span className="truncate">{displayStore.address}</span>
-                </p>
+                {isPaused && (
+                  <div className="relative mt-2 w-[min(100%,280px)] py-2">
+                    <div
+                      className={`overflow-hidden rounded-full bg-white/22 transition-all duration-150 ${
+                        isScrubbing ? 'h-1.5' : 'h-0.5'
+                      }`}
+                    >
+                      <div
+                        className="h-full rounded-full bg-[#66E1AA]"
+                        style={{ width: `${Math.min(100, Math.max(0, videoProgress))}%` }}
+                      />
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={videoProgress}
+                      aria-label={t('videoProgress')}
+                      onPointerDown={() => setIsScrubbing(true)}
+                      onPointerUp={() => setIsScrubbing(false)}
+                      onPointerCancel={() => setIsScrubbing(false)}
+                      onChange={(event) => handleVideoSeek(Number(event.currentTarget.value))}
+                      className="absolute inset-x-0 top-0 h-5 w-full cursor-pointer opacity-0"
+                    />
+                  </div>
+                )}
               </div>
 
-            </div>
-          </section>
-
-          <div className="absolute bottom-[178px] right-2.5 z-30 flex flex-col items-center gap-3">
-            {[
-              {
-                label: t('follow'),
-                type: 'avatar' as const,
-                action: () => toast.info(t('followSoon')),
-              },
-              {
-                label: t('favorite'),
-                type: 'icon' as const,
-                icon: Heart,
-                action: () => toggleSave(currentStore.id),
-                active: savedStores.has(currentStore.id),
-              },
-              { label: t('comment'), type: 'icon' as const, icon: MessageCircle, action: () => toast.info(t('commentSoon')) },
-              { label: t('share'), type: 'icon' as const, icon: Share2, action: shareStore },
-            ].map((action) => {
-              const Icon = action.type === 'icon' ? action.icon : null;
-
-              return (
-                <button
-                  key={action.label}
-                  type="button"
-                  onClick={action.action}
-                  className="tan-pressable flex min-h-[40px] min-w-[40px] flex-col items-center gap-1 text-[10px] font-bold text-white"
-                >
-                  {Icon ? (
-                    <Icon
-                      size={21}
-                      strokeWidth={2.2}
-                      className={`drop-shadow-[0_3px_10px_rgba(0,0,0,0.45)] ${
-                        action.active ? 'fill-white text-white' : ''
-                      }`}
-                    />
-                  ) : (
-                    <span
-                      className="relative block h-8 w-8 rounded-full border border-white/70 bg-cover bg-center shadow-[0_4px_12px_rgba(0,0,0,0.32)]"
-                      style={{
-                        backgroundImage:
-                          "url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop')",
-                      }}
-                    >
+              <div className="grid h-[58px] grid-cols-[1fr_1.35fr_36px_36px_36px] items-center gap-1.5 rounded-[18px] border border-white/22 bg-black/24 px-2 shadow-[0_10px_28px_rgba(0,0,0,0.26)] backdrop-blur-md">
+                <div className="flex min-w-0 items-center gap-2 pr-1 text-white">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#62E0B0]/18 text-[#62E0B0]">
+                    <MapPin size={23} fill="currentColor" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[19px] font-extrabold leading-none">{displayStore.distance}km</span>
+                    <span className="mt-0.5 block truncate text-[10px] text-white/66">
+                      {t('approxSevenMinuteWalk')}
                     </span>
-                  )}
-                  {action.label}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGoHere}
+                  className="tan-pressable flex h-11 items-center justify-center gap-2 rounded-full bg-[#66E1AA] text-[17px] font-extrabold text-[#073238] shadow-[0_10px_24px_rgba(102,225,170,0.22)]"
+                >
+                  {t('goHere')}
+                  <Send size={19} fill="#073238" />
                 </button>
-              );
-            })}
-          </div>
+                <button
+                  type="button"
+                  onClick={() => toggleSave(currentStore.id)}
+                  aria-label={t('favorite')}
+                  className="tan-pressable grid h-9 w-9 place-items-center text-white"
+                >
+                  <Star
+                    size={21}
+                    className={savedStores.has(currentStore.id) ? 'fill-[#66E1AA] text-[#66E1AA]' : ''}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={shareStore}
+                  aria-label={t('share')}
+                  className="tan-pressable grid h-9 w-9 place-items-center text-white"
+                >
+                  <Share2 size={21} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenMore}
+                  aria-label={t('more')}
+                  className="tan-pressable grid h-9 w-9 place-items-center text-white"
+                >
+                  <UsersRound size={22} />
+                </button>
+              </div>
+            </section>
+          )}
         </>
       )}
 
@@ -541,10 +1030,23 @@ export default function Home() {
               {savedStoreList.length > 0 ? (
                 <div className="max-h-[27vh] space-y-2 overflow-y-auto pr-1 tan-scrollbar-hide">
                   {savedStoreList.map((store) => (
-                    <button
+                    <div
                       key={store.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => {
+                        const sourceStore = stores.find((item) => item.id === store.id);
+                        if (sourceStore) {
+                          const categoryStores = stores.filter((item) => item.category === sourceStore.category);
+                          setSelectedCategory(sourceStore.category);
+                          setSelectedTag(null);
+                          setCurrentIndex(Math.max(0, categoryStores.findIndex((item) => item.id === store.id)));
+                        }
+                        setShowFavoritesSheet(false);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
                         const sourceStore = stores.find((item) => item.id === store.id);
                         if (sourceStore) {
                           const categoryStores = stores.filter((item) => item.category === sourceStore.category);
@@ -556,9 +1058,17 @@ export default function Home() {
                       }}
                       className="tan-pressable flex w-full items-center gap-2 rounded-[16px] border border-white/14 bg-white/12 p-2 text-left"
                     >
-                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[13px] bg-[#A7FFF4]/18 text-[#A7FFF4]">
+                      <button
+                        type="button"
+                        aria-label={t('removedFavorite')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleSave(store.id);
+                        }}
+                        className="tan-pressable grid h-8 w-8 shrink-0 place-items-center rounded-[13px] bg-[#A7FFF4]/18 text-[#A7FFF4]"
+                      >
                         <Heart size={16} fill="currentColor" />
-                      </span>
+                      </button>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[13px] font-extrabold text-white">
                           {store.name}
@@ -570,7 +1080,7 @@ export default function Home() {
                       <span className="rounded-full bg-white/14 px-2.5 py-0.5 text-[10px] font-bold text-[#A7FFF4]">
                         {store.distance}km
                       </span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -624,91 +1134,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      <HomeBottomDock
-        onOpenFavorites={handleOpenFavorites}
-        onOpenSearch={handleOpenSearch}
-        onOpenMap={handleOpenMap}
-        onGoHere={handleGoHere}
-        onOpenMore={handleOpenMore}
-        centerIcon={viewMode === 'map' ? Video : MapPin}
-        labels={{
-          favorites: t('favorites'),
-          search: t('search'),
-          map: viewMode === 'map' ? t('video') : t('map'),
-          goHere: t('goHere'),
-          more: t('more'),
-        }}
-      />
     </main>
-  );
-}
-
-function HomeBottomDock({
-  onOpenFavorites,
-  onOpenSearch,
-  onOpenMap,
-  onGoHere,
-  onOpenMore,
-  centerIcon: CenterIcon,
-  labels,
-}: {
-  onOpenFavorites: () => void;
-  onOpenSearch: () => void;
-  onOpenMap: () => void;
-  onGoHere: () => void;
-  onOpenMore: () => void;
-  centerIcon: LucideIcon;
-  labels: {
-    favorites: string;
-    search: string;
-    map: string;
-    goHere: string;
-    more: string;
-  };
-}) {
-  return (
-    <nav
-      className="fixed left-1/2 bottom-[calc(10px+env(safe-area-inset-bottom))] z-[80] grid h-[56px] w-[min(calc(100%_-_22px),402px)] -translate-x-1/2 grid-cols-5 items-end rounded-full border border-white/80 bg-white/92 px-2 pb-1 pt-1 shadow-[0_10px_24px_rgba(0,0,0,0.13)] backdrop-blur-2xl"
-      aria-label="home quick navigation"
-    >
-      <HomeDockButton icon={Heart} label={labels.favorites} onClick={onOpenFavorites} />
-      <HomeDockButton icon={Search} label={labels.search} onClick={onOpenSearch} />
-      <button
-        type="button"
-        onClick={onOpenMap}
-        aria-label={labels.map}
-        className="tan-pressable -mt-8 flex min-h-[70px] flex-col items-center justify-start text-[#0EA896]"
-      >
-        <span className="grid h-[68px] w-[68px] place-items-center rounded-full border border-white/75 bg-[radial-gradient(circle_at_35%_30%,#74F8EA,#12B8A6_56%,#078D80)] text-white shadow-[0_0_0_8px_rgba(18,184,166,0.16),0_0_28px_rgba(18,184,166,0.56),0_10px_22px_rgba(0,0,0,0.18)]">
-          <CenterIcon size={28} fill={CenterIcon === MapPin ? 'white' : 'none'} strokeWidth={2.25} />
-        </span>
-        <span className="-mt-5 text-[11px] font-extrabold text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.38)]">
-          {labels.map}
-        </span>
-      </button>
-      <HomeDockButton icon={Send} label={labels.goHere} onClick={onGoHere} />
-      <HomeDockButton icon={MoreHorizontal} label={labels.more} onClick={onOpenMore} />
-    </nav>
-  );
-}
-
-function HomeDockButton({
-  icon: Icon,
-  label,
-  onClick,
-}: {
-  icon: LucideIcon;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="tan-pressable flex min-h-[48px] min-w-0 flex-col items-center justify-center gap-0.5 rounded-[17px] text-[#5F6673]"
-    >
-      <Icon size={22} strokeWidth={2.05} />
-      <span className="text-[10px] font-extrabold leading-none">{label}</span>
-    </button>
   );
 }
