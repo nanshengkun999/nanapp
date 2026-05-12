@@ -167,6 +167,20 @@ a {
   }
 }
 
+@keyframes tan-nightlife-glow {
+  0% {
+    filter: brightness(0.92);
+  }
+
+  55% {
+    filter: brightness(1.16);
+  }
+
+  100% {
+    filter: brightness(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

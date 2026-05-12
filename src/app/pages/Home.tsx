@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import type { TouchEvent } from 'react';
 import {
@@ -31,6 +31,7 @@ import { localizeStore } from '../utils/storeI18n';
 type ViewMode = 'video' | 'map';
 type ContentCategoryId = 'food' | 'medical' | 'nightlife';
 type PreloadKind = 'vertical' | 'channel';
+type ThemeId = ContentCategoryId | 'map';
 
 type PreloadedVideo = {
   video: HTMLVideoElement;
@@ -53,6 +54,76 @@ const contentHomeTabs = [
   { id: 'medical', labelKey: 'beauty', categoryIndex: 1, type: 'content' },
   { id: 'nightlife', labelKey: 'nightlife', categoryIndex: 2, type: 'content' },
 ] as const;
+
+const homeThemes: Record<
+  ThemeId,
+  {
+    primary: string;
+    primarySoft: string;
+    primaryGlow: string;
+    logo: string;
+    logoGlow: string;
+    buttonBg: string;
+    buttonText: string;
+    border: string;
+    topBg: string;
+    lineTrack: string;
+    iconSoft: string;
+  }
+> = {
+  map: {
+    primary: '#66E1AA',
+    primarySoft: 'rgba(102,225,170,0.18)',
+    primaryGlow: 'rgba(102,225,170,0.56)',
+    logo: '#79E5C4',
+    logoGlow: 'rgba(121,229,196,0.52)',
+    buttonBg: 'linear-gradient(135deg, #73E9B7, #4BD9C8)',
+    buttonText: '#073238',
+    border: 'rgba(102,225,170,0.38)',
+    topBg: 'rgba(0,0,0,0.14)',
+    lineTrack: 'rgba(255,255,255,0.22)',
+    iconSoft: 'rgba(102,225,170,0.18)',
+  },
+  food: {
+    primary: '#5FE0B5',
+    primarySoft: 'rgba(95,224,181,0.1)',
+    primaryGlow: 'rgba(95,224,181,0.42)',
+    logo: '#8FF3D0',
+    logoGlow: 'rgba(0,0,0,0.24)',
+    buttonBg: 'linear-gradient(135deg, #8FF3D0 0%, #5FE0B5 48%, #48D6A0 100%)',
+    buttonText: '#073B32',
+    border: 'rgba(95,224,181,0.42)',
+    topBg: 'rgba(8,12,10,0.42)',
+    lineTrack: 'rgba(255,255,255,0.16)',
+    iconSoft: 'rgba(95,224,181,0.18)',
+  },
+  medical: {
+    primary: '#E8B4B8',
+    primarySoft: 'rgba(255,235,232,0.1)',
+    primaryGlow: 'rgba(232,180,184,0.24)',
+    logo: '#F3D6C8',
+    logoGlow: 'rgba(0,0,0,0.22)',
+    buttonBg: 'linear-gradient(135deg, #F3D6C8 0%, #E8B4B8 48%, #C98F8F 100%)',
+    buttonText: '#4A2D31',
+    border: 'rgba(232,180,184,0.42)',
+    topBg: 'rgba(18,14,16,0.42)',
+    lineTrack: 'rgba(255,255,255,0.18)',
+    iconSoft: 'rgba(255,235,232,0.1)',
+  },
+  nightlife: {
+    primary: '#C02BFF',
+    primarySoft: 'rgba(192,43,255,0.2)',
+    primaryGlow: 'rgba(192,43,255,0.82)',
+    logo: '#E879F9',
+    logoGlow: 'rgba(46,219,255,0.45)',
+    buttonBg: 'linear-gradient(135deg, #6A5CFF 0%, #C02BFF 52%, #FF4FD8 100%)',
+    buttonText: '#FFFFFF',
+    border: 'rgba(192,43,255,0.42)',
+    topBg: 'rgba(8,10,24,0.42)',
+    lineTrack: 'rgba(255,255,255,0.16)',
+    iconSoft: 'rgba(46,219,255,0.18)',
+  },
+};
 
 function normalizeHomeCategory(value: string | null): ContentCategoryId {
   if (value === 'medical' || value === 'beauty') return 'medical';
@@ -268,6 +339,24 @@ export default function Home() {
     return availableTags.filter((tag) => tag.toLowerCase().includes(tagSearch.toLowerCase()));
   }, [availableTags, tagSearch]);
 
+  const searchFilteredStores = useMemo(() => {
+    const query = tagSearch.trim().toLowerCase();
+    if (!query) return filteredStores;
+
+    return filteredStores.filter((store) => {
+      const localizedStore = localizeStore(store, language);
+      const localizedTags = store.tags.map((tag) => t(tag).toLowerCase());
+
+      return (
+        localizedStore.name.toLowerCase().includes(query) ||
+        localizedStore.address.toLowerCase().includes(query) ||
+        localizedStore.description.toLowerCase().includes(query) ||
+        store.tags.some((tag) => tag.toLowerCase().includes(query)) ||
+        localizedTags.some((tag) => tag.includes(query))
+      );
+    });
+  }, [filteredStores, language, t, tagSearch]);
+
   const savedStoreList = useMemo(
     () => stores.filter((store) => savedStores.has(store.id)).map((store) => getDisplayStore(store, language, t)),
     [language, savedStores, t]
@@ -279,6 +368,36 @@ export default function Home() {
   }, [homeCategory]);
 
   const currentChannel = getContentIdByCategory(selectedCategory);
+  const activeTheme = homeThemes[viewMode === 'map' ? 'map' : currentChannel];
+  const isNightlifeTheme = viewMode === 'video' && currentChannel === 'nightlife';
+  const isMedicalTheme = viewMode === 'video' && currentChannel === 'medical';
+  const isFoodTheme = viewMode === 'video' && currentChannel === 'food';
+  const themedPillStyle: CSSProperties = {
+    backgroundColor: activeTheme.topBg,
+    borderColor: isFoodTheme ? 'rgba(255,255,255,0.18)' : activeTheme.border,
+    boxShadow: isFoodTheme
+      ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 18px rgba(0,0,0,0.18)'
+      : isMedicalTheme
+      ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 18px rgba(0,0,0,0.18)'
+      : isNightlifeTheme
+      ? '0 0 10px rgba(192,43,255,0.25), inset 0 0 12px rgba(255,255,255,0.04)'
+      : `0 4px 14px rgba(0,0,0,0.18), 0 0 14px ${activeTheme.primaryGlow}`,
+    backdropFilter: isNightlifeTheme || isMedicalTheme || isFoodTheme ? 'blur(14px)' : undefined,
+  };
+  const themedIconStyle: CSSProperties = {
+    color: activeTheme.primary,
+    filter: isFoodTheme
+      ? 'drop-shadow(0 0 6px rgba(95,224,181,0.42))'
+      : isMedicalTheme
+      ? 'none'
+      : isNightlifeTheme
+      ? 'drop-shadow(0 0 8px rgba(192,43,255,0.8))'
+      : `drop-shadow(0 0 8px ${activeTheme.primaryGlow})`,
+  };
+  const foodOverlay =
+    'linear-gradient(to bottom, rgba(4,8,6,0.52) 0%, rgba(4,8,6,0.14) 36%, rgba(4,8,6,0.24) 66%, rgba(4,8,6,0.78) 100%)';
+  const nightlifeOverlay =
+    'linear-gradient(to bottom, rgba(3,5,15,0.72) 0%, rgba(3,5,15,0.24) 35%, rgba(3,5,15,0.32) 60%, rgba(3,5,15,0.82) 100%), radial-gradient(circle at 78% 14%, rgba(192,43,255,0.28), transparent 34%), radial-gradient(circle at 20% 52%, rgba(46,219,255,0.12), transparent 30%)';
 
   const preloadVideo = (index: number) => {
     const store = filteredStores[index];
@@ -515,6 +634,13 @@ export default function Home() {
     setIsSearchOpen(true);
   };
 
+  const handleTagSearch = (tag: string) => {
+    setShowFavoritesSheet(false);
+    setViewMode('video');
+    setIsSearchOpen(true);
+    setTagSearch(tag);
+  };
+
   const handleOpenMap = () => {
     if (isSearchOpen || showFavoritesSheet) {
       setIsSearchOpen(false);
@@ -740,7 +866,25 @@ export default function Home() {
                 event.stopPropagation();
                 setIsMuted((previous) => !previous);
               }}
-              className="tan-pressable pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-white/22 bg-black/36 text-white backdrop-blur-md"
+              className="tan-pressable pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-white/22 bg-black/36 text-white backdrop-blur-md transition-all duration-[180ms]"
+              style={{
+                borderColor: activeTheme.border,
+                background: isFoodTheme
+                  ? 'rgba(20,22,20,0.58)'
+                  : isMedicalTheme
+                  ? 'rgba(80,48,52,0.52)'
+                  : isNightlifeTheme
+                  ? 'rgba(25,12,45,0.72)'
+                  : undefined,
+                backdropFilter: isMedicalTheme || isFoodTheme ? 'blur(16px)' : undefined,
+                boxShadow: isFoodTheme
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 22px rgba(0,0,0,0.28)'
+                  : isMedicalTheme
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 22px rgba(0,0,0,0.26)'
+                  : isNightlifeTheme
+                  ? '0 0 12px rgba(255,79,216,0.75), 0 0 26px rgba(106,92,255,0.55), inset 0 0 18px rgba(255,255,255,0.08)'
+                  : `0 0 22px ${activeTheme.primaryGlow}`,
+              }}
             >
               {isMuted ? <VolumeX size={22} /> : <Volume2 size={22} />}
             </button>
@@ -751,7 +895,25 @@ export default function Home() {
                 event.stopPropagation();
                 setIsPaused(false);
               }}
-              className="tan-pressable pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-white/22 bg-black/36 text-white backdrop-blur-md"
+              className="tan-pressable pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-white/22 bg-black/36 text-white backdrop-blur-md transition-all duration-[180ms]"
+              style={{
+                borderColor: activeTheme.border,
+                background: isFoodTheme
+                  ? 'rgba(20,22,20,0.58)'
+                  : isMedicalTheme
+                  ? 'rgba(80,48,52,0.52)'
+                  : isNightlifeTheme
+                  ? 'rgba(25,12,45,0.72)'
+                  : undefined,
+                backdropFilter: isMedicalTheme || isFoodTheme ? 'blur(16px)' : undefined,
+                boxShadow: isFoodTheme
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 22px rgba(0,0,0,0.28)'
+                  : isMedicalTheme
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 22px rgba(0,0,0,0.26)'
+                  : isNightlifeTheme
+                  ? '0 0 12px rgba(255,79,216,0.75), 0 0 26px rgba(106,92,255,0.55), inset 0 0 18px rgba(255,255,255,0.08)'
+                  : `0 0 24px ${activeTheme.primaryGlow}`,
+              }}
             >
               <Play size={24} fill="white" />
             </button>
@@ -761,34 +923,97 @@ export default function Home() {
 
       {!isSearchOpen && (
         <>
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.78),rgba(0,0,0,0.12)_44%,rgba(0,0,0,0.46)_100%)]" />
+          <div
+            className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,0.78),rgba(0,0,0,0.12)_44%,rgba(0,0,0,0.46)_100%)] transition-opacity duration-[220ms]"
+            style={
+              isNightlifeTheme
+                ? { backgroundImage: nightlifeOverlay }
+                : isFoodTheme
+                ? { backgroundImage: foodOverlay }
+                : undefined
+            }
+          />
           <header className="absolute inset-x-0 top-0 z-40 px-5 pt-[calc(12px+env(safe-area-inset-top))]">
-            <div className="flex items-center justify-between">
+            <div className="flex min-h-8 items-center gap-2">
               {viewMode === 'map' ? (
                 <span className="h-9 w-20" aria-hidden="true" />
               ) : (
-                <h1 className="text-[22px] font-extrabold leading-none tracking-normal text-[#79E5C4] drop-shadow-lg">
+                <h1
+                  className="shrink-0 text-[22px] font-extrabold leading-none tracking-normal text-[#79E5C4] drop-shadow-lg"
+                  style={
+                    isNightlifeTheme
+                      ? {
+                          color: '#F0ABFC',
+                          WebkitTextFillColor: '#F0ABFC',
+                          textShadow: '0 0 8px rgba(192,43,255,0.8), 0 0 18px rgba(46,219,255,0.45)',
+                        }
+                      : isMedicalTheme
+                      ? {
+                          background: 'linear-gradient(135deg, #F3D6C8 0%, #E8B4B8 42%, #C98F8F 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          textShadow: '0 1px 2px rgba(0,0,0,0.22)',
+                        }
+                      : isFoodTheme
+                      ? {
+                          background: 'linear-gradient(135deg, #8FF3D0 0%, #5FE0B5 48%, #48D6A0 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          textShadow: '0 1px 2px rgba(0,0,0,0.24)',
+                        }
+                      : {
+                          color: activeTheme.logo,
+                          textShadow: `0 0 14px ${activeTheme.logoGlow}`,
+                        }
+                  }
+                >
                   Tanmap
                 </h1>
               )}
               {viewMode === 'map' ? (
-                <span className="h-9 w-20" aria-hidden="true" />
+                <span className="ml-auto h-9 w-20" aria-hidden="true" />
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="ml-auto flex min-w-0 max-w-[calc(100vw-128px)] items-center justify-end gap-1 overflow-x-auto tan-scrollbar-hide">
+                  <button
+                    type="button"
+                    onClick={handleOpenCommunity}
+                    className="tan-pressable h-7 shrink-0 rounded-full border border-white/20 bg-black/14 px-2 text-[11px] font-semibold text-white/92 shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-md min-[410px]:h-8 min-[410px]:px-2.5 min-[410px]:text-[12px]"
+                    style={themedPillStyle}
+                  >
+                    {t('exploreBar')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenService}
+                    className="tan-pressable h-7 shrink-0 rounded-full border border-white/20 bg-black/14 px-2 text-[11px] font-semibold text-white/92 shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-md min-[410px]:h-8 min-[410px]:px-2.5 min-[410px]:text-[12px]"
+                    style={themedPillStyle}
+                  >
+                    {t('variousServices')}
+                  </button>
                   <button
                     type="button"
                     onClick={handleOpenMore}
-                    className="tan-pressable h-9 rounded-full border border-white/24 bg-black/10 px-3 text-[12px] font-semibold text-white backdrop-blur-sm"
+                    className="tan-pressable h-7 shrink-0 rounded-full border border-white/20 bg-black/14 px-2 text-[11px] font-semibold text-white/92 shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-md min-[410px]:h-8 min-[410px]:px-2.5 min-[410px]:text-[12px]"
+                    style={themedPillStyle}
                   >
                     {t('homeMy')}
                   </button>
                   <button
                     type="button"
+                    onClick={handleOpenFavorites}
+                    className="tan-pressable h-7 shrink-0 rounded-full border border-white/20 bg-black/14 px-2 text-[11px] font-semibold text-white/92 shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-md min-[410px]:h-8 min-[410px]:px-2.5 min-[410px]:text-[12px]"
+                    style={themedPillStyle}
+                  >
+                    {t('favoritesFolder')}
+                  </button>
+                  <button
+                    type="button"
                     aria-label={t('search')}
                     onClick={handleOpenSearch}
-                    className="tan-pressable grid h-9 w-9 place-items-center rounded-full border border-white/32 bg-black/12 text-white shadow-[0_6px_18px_rgba(0,0,0,0.2)] backdrop-blur-sm"
+                    className="tan-pressable grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/24 bg-black/14 text-white shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-md min-[410px]:h-8 min-[410px]:w-8"
+                    style={themedPillStyle}
                   >
-                    <Search size={18} strokeWidth={1.9} />
+                    <Search size={16} strokeWidth={1.9} />
                   </button>
                 </div>
               )}
@@ -800,6 +1025,7 @@ export default function Home() {
                 aria-label={t('previousCategory')}
                 onClick={() => handleHomeTabSelect(activeHomeTabIndex - 1)}
                 className="tan-pressable grid h-7 w-6 place-items-center text-white/62"
+                style={themedIconStyle}
               >
                 <ChevronLeft size={23} strokeWidth={2.1} />
               </button>
@@ -820,12 +1046,46 @@ export default function Home() {
                         className={`tan-pressable flex h-8 flex-col items-center justify-start text-[15px] font-semibold tracking-normal ${
                           isActive ? 'text-white' : 'text-white/60'
                         }`}
+                        style={
+                          isActive
+                            ? {
+                                color: isFoodTheme ? '#FFFFFF' : isMedicalTheme ? '#F3D6C8' : undefined,
+                                fontWeight: isFoodTheme ? 700 : undefined,
+                                textShadow: isFoodTheme || isMedicalTheme
+                                  ? 'none'
+                                  : isNightlifeTheme
+                                  ? '0 0 8px rgba(255,79,216,0.9), 0 0 14px rgba(106,92,255,0.7)'
+                                  : `0 0 12px ${activeTheme.primaryGlow}`,
+                              }
+                            : isFoodTheme
+                            ? { color: 'rgba(255,255,255,0.62)', fontWeight: 600 }
+                            : isMedicalTheme
+                            ? { color: 'rgba(255,255,255,0.68)' }
+                            : undefined
+                        }
                       >
                         <span>{t(tab.labelKey)}</span>
                         {isActive && (
                           <motion.span
                             layoutId="home-category-underline"
                             className="mt-1 h-0.5 w-8 rounded-full bg-[#62E0B0] shadow-[0_0_12px_rgba(98,224,176,0.7)]"
+                            style={{
+                              height: isNightlifeTheme || isFoodTheme ? 3 : undefined,
+                              background: isFoodTheme
+                                ? 'linear-gradient(90deg, #8FF3D0, #5FE0B5, #48D6A0)'
+                                : isMedicalTheme
+                                ? 'linear-gradient(90deg, #F3D6C8, #E8B4B8, #C98F8F)'
+                                : isNightlifeTheme
+                                ? 'linear-gradient(90deg, #FF4FD8, #C02BFF, #2EDBFF)'
+                                : activeTheme.primary,
+                              boxShadow: isFoodTheme
+                                ? '0 0 8px rgba(95,224,181,0.35)'
+                                : isMedicalTheme
+                                ? 'none'
+                                : isNightlifeTheme
+                                ? '0 0 8px rgba(192,43,255,0.9), 0 0 16px rgba(46,219,255,0.45)'
+                                : `0 0 14px ${activeTheme.primaryGlow}`,
+                            }}
                             transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
                           />
                         )}
@@ -843,6 +1103,35 @@ export default function Home() {
                               ? 'text-[#62E0B0] drop-shadow-[0_0_8px_rgba(98,224,176,0.75)]'
                               : 'text-white/72'
                           }`}
+                          style={
+                            isHomeCategory
+                              ? isFoodTheme
+                                ? {
+                                    color: '#5FE0B5',
+                                    fill: '#5FE0B5',
+                                    filter: 'drop-shadow(0 0 6px rgba(95,224,181,0.42))',
+                                    transform: 'scale(1.06)',
+                                  }
+                                : isMedicalTheme
+                                ? {
+                                    color: '#E8B4B8',
+                                    filter: 'none',
+                                  }
+                                : isNightlifeTheme
+                                ? {
+                                    color: '#FF4FD8',
+                                    filter: 'drop-shadow(0 0 8px rgba(255,79,216,0.95))',
+                                    transform: 'scale(1.08)',
+                                  }
+                                : themedIconStyle
+                              : isFoodTheme
+                              ? { color: 'rgba(255,255,255,0.58)', fill: 'rgba(255,255,255,0.58)', filter: 'none' }
+                              : isMedicalTheme
+                              ? { color: 'rgba(255,255,255,0.62)' }
+                              : isNightlifeTheme
+                              ? { color: 'rgba(255,255,255,0.58)' }
+                              : undefined
+                          }
                         >
                           <House size={14} fill="currentColor" strokeWidth={2} />
                         </button>
@@ -856,72 +1145,149 @@ export default function Home() {
                 aria-label={t('nextCategory')}
                 onClick={() => handleHomeTabSelect(activeHomeTabIndex + 1)}
                 className="tan-pressable grid h-7 w-6 place-items-center text-white/62"
+                style={themedIconStyle}
               >
                 <ChevronRight size={23} strokeWidth={2.1} />
               </button>
             </div>
           </header>
 
-          <div className="absolute right-2 top-[calc(156px+env(safe-area-inset-top))] z-40 w-[74px] text-white">
-            <button
-              type="button"
-              onClick={handleOpenService}
-              className="tan-pressable block h-8 w-full text-left text-[12px] font-semibold leading-8 text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
-            >
-              {t('variousServices')}
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenCommunity}
-              className="tan-pressable block h-8 w-full text-left text-[12px] font-semibold leading-8 text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
-            >
-              {t('exploreBar')}
-            </button>
-            <button
-              type="button"
-              onClick={handleOpenFavorites}
-              className="tan-pressable block h-8 w-full text-left text-[12px] font-semibold leading-8 text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
-            >
-              {t('favoritesFolder')}
-            </button>
-          </div>
-
           {viewMode === 'video' && (
             <section className="absolute inset-x-0 bottom-[calc(18px+env(safe-area-inset-bottom))] z-30 px-3">
               <div className="mb-4 max-w-[82%]">
-                <h2 className="mb-1.5 truncate text-[30px] font-extrabold leading-tight tracking-normal text-white drop-shadow-[0_3px_16px_rgba(0,0,0,0.45)]">
+                <h2
+                  className="mb-1 truncate text-[26px] font-extrabold leading-tight tracking-normal text-white drop-shadow-[0_3px_16px_rgba(0,0,0,0.45)]"
+                  style={{
+                    color: '#FFFFFF',
+                    textShadow: isFoodTheme
+                      ? '0 2px 8px rgba(0,0,0,0.48)'
+                      : isMedicalTheme
+                      ? 'none'
+                      : isNightlifeTheme
+                      ? '0 0 10px rgba(192,43,255,0.75), 0 0 18px rgba(46,219,255,0.28)'
+                      : `0 0 14px ${activeTheme.primaryGlow}`,
+                  }}
+                >
                   {displayStore.name}
                 </h2>
-                <p className="mb-2 flex items-center gap-1.5 truncate text-[13px] font-medium text-white/82">
-                  <MapPin size={15} className="shrink-0" />
+                <p className="mb-1.5 flex items-center gap-1.5 truncate text-[12px] font-medium text-white/82">
+                  <MapPin
+                    size={14}
+                    className="shrink-0"
+                    style={
+                      isFoodTheme
+                        ? { color: '#5FE0B5', filter: 'none' }
+                        : isMedicalTheme
+                        ? { color: '#E8B4B8', filter: 'none' }
+                        : isNightlifeTheme
+                        ? { color: '#C02BFF', filter: 'drop-shadow(0 0 6px rgba(192,43,255,0.8))' }
+                        : themedIconStyle
+                    }
+                  />
                   <span className="truncate">{displayStore.address}</span>
                 </p>
                 {displayStore.description && (
-                  <p className="mb-3 line-clamp-1 text-[13px] font-medium text-white/78">
+                  <p
+                    className="mb-2 line-clamp-1 text-[12px] font-medium text-white/78"
+                    style={
+                      isFoodTheme
+                        ? { color: 'rgba(255,255,255,0.78)', lineHeight: 1.45 }
+                        : isMedicalTheme
+                        ? { color: 'rgba(255,255,255,0.76)' }
+                        : undefined
+                    }
+                  >
                     {displayStore.description}
                   </p>
                 )}
-                <div className="flex gap-2 overflow-x-auto tan-scrollbar-hide">
+                <div className="flex gap-3 overflow-x-auto tan-scrollbar-hide">
                   {displayStore.tags.slice(0, 4).map((tag) => (
-                    <span
+                    <button
                       key={tag}
-                      className="shrink-0 rounded-[11px] border border-white/24 bg-black/18 px-3 py-1.5 text-[12px] font-medium text-white/86 backdrop-blur-md"
+                      type="button"
+                      onClick={() => handleTagSearch(tag)}
+                      className="tan-pressable shrink-0 py-0.5 text-[13px] font-semibold text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
+                      style={
+                        isNightlifeTheme
+                          ? {
+                              color: '#EACBFF',
+                              border: '1px solid rgba(192,43,255,0.45)',
+                              background: 'rgba(20,10,40,0.36)',
+                              boxShadow: '0 0 8px rgba(192,43,255,0.22)',
+                              borderRadius: 8,
+                              paddingInline: 8,
+                            }
+                          : isMedicalTheme
+                          ? {
+                              color: '#F3D6C8',
+                              border: '1px solid rgba(232,180,184,0.34)',
+                              background: 'rgba(80,48,52,0.32)',
+                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
+                              borderRadius: 8,
+                              paddingInline: 8,
+                            }
+                          : isFoodTheme
+                          ? {
+                              color: 'rgba(255,255,255,0.92)',
+                              border: '1px solid rgba(95,224,181,0.38)',
+                              background: 'rgba(8,12,10,0.36)',
+                              boxShadow: 'none',
+                              backdropFilter: 'blur(10px)',
+                              borderRadius: 999,
+                              paddingInline: 8,
+                            }
+                          : {
+                              color: activeTheme.primary,
+                              textShadow: `0 0 10px ${activeTheme.primaryGlow}`,
+                            }
+                      }
                     >
-                      {tag}
-                    </span>
+                      #{tag}
+                    </button>
                   ))}
                 </div>
                 {isPaused && (
-                  <div className="relative mt-2 w-[min(100%,280px)] py-2">
+                  <div className="relative -ml-3 mt-2 w-screen py-2">
                     <div
-                      className={`overflow-hidden rounded-full bg-white/22 transition-all duration-150 ${
+                      className={`relative rounded-full bg-white/22 transition-all duration-150 ${
                         isScrubbing ? 'h-1.5' : 'h-0.5'
                       }`}
+                      style={{ backgroundColor: activeTheme.lineTrack }}
                     >
                       <div
                         className="h-full rounded-full bg-[#66E1AA]"
-                        style={{ width: `${Math.min(100, Math.max(0, videoProgress))}%` }}
+                        style={{
+                          width: `${Math.min(100, Math.max(0, videoProgress))}%`,
+                          background: isFoodTheme
+                            ? 'linear-gradient(90deg, #8FF3D0, #5FE0B5, #48D6A0)'
+                            : isMedicalTheme
+                            ? 'linear-gradient(90deg, #F3D6C8, #E8B4B8, #C98F8F)'
+                            : isNightlifeTheme
+                            ? 'linear-gradient(90deg, #FF4FD8, #C02BFF, #2EDBFF)'
+                            : activeTheme.primary,
+                          boxShadow: isFoodTheme
+                            ? '0 0 8px rgba(95,224,181,0.42)'
+                            : isMedicalTheme
+                            ? 'none'
+                            : isNightlifeTheme
+                            ? '0 0 10px rgba(192,43,255,0.8)'
+                            : `0 0 12px ${activeTheme.primaryGlow}`,
+                        }}
                       />
+                      {(isNightlifeTheme || isMedicalTheme || isFoodTheme) && (
+                        <span
+                          className="absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
+                          style={{
+                            left: `calc(${Math.min(100, Math.max(0, videoProgress))}% - 5px)`,
+                            backgroundColor: isFoodTheme ? '#5FE0B5' : isMedicalTheme ? '#E8B4B8' : '#FF4FD8',
+                            boxShadow: isFoodTheme
+                              ? '0 0 8px rgba(95,224,181,0.55)'
+                              : isMedicalTheme
+                              ? '0 1px 4px rgba(0,0,0,0.22)'
+                              : '0 0 10px rgba(255,79,216,0.85)',
+                          }}
+                        />
+                      )}
                     </div>
                     <input
                       type="range"
@@ -940,13 +1306,54 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="grid h-[58px] grid-cols-[1fr_1.35fr_36px_36px_36px] items-center gap-1.5 rounded-[18px] border border-white/22 bg-black/24 px-2 shadow-[0_10px_28px_rgba(0,0,0,0.26)] backdrop-blur-md">
-                <div className="flex min-w-0 items-center gap-2 pr-1 text-white">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#62E0B0]/18 text-[#62E0B0]">
-                    <MapPin size={23} fill="currentColor" />
+              <div
+                className="grid h-[56px] grid-cols-[minmax(0,1fr)_116px_minmax(0,1fr)] items-center gap-1.5 rounded-[18px] border border-white/22 bg-black/24 px-2 shadow-[0_10px_28px_rgba(0,0,0,0.26)] backdrop-blur-md min-[390px]:grid-cols-[minmax(0,1fr)_124px_minmax(0,1fr)]"
+                style={{
+                  borderColor: isFoodTheme ? 'rgba(255,255,255,0.16)' : activeTheme.border,
+                  borderRadius: isFoodTheme ? 24 : undefined,
+                  background: isFoodTheme
+                    ? 'rgba(8,12,10,0.68)'
+                    : isMedicalTheme
+                    ? 'rgba(18,14,16,0.56)'
+                    : isNightlifeTheme
+                    ? 'rgba(5,7,18,0.74)'
+                    : undefined,
+                  backdropFilter: isNightlifeTheme || isMedicalTheme || isFoodTheme ? 'blur(18px)' : undefined,
+                  boxShadow: isFoodTheme
+                    ? '0 10px 28px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.08)'
+                    : isMedicalTheme
+                    ? 'inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 24px rgba(0,0,0,0.22)'
+                    : isNightlifeTheme
+                    ? '0 0 16px rgba(192,43,255,0.35), inset 0 0 16px rgba(255,255,255,0.04)'
+                    : `0 10px 28px rgba(0,0,0,0.26), 0 0 18px ${activeTheme.primaryGlow}`,
+                }}
+              >
+                <div className="flex min-w-0 items-center gap-1.5 text-white">
+                  <span
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#62E0B0]/18 text-[#62E0B0]"
+                    style={{
+                      background: isFoodTheme
+                        ? 'rgba(95,224,181,0.18)'
+                        : isMedicalTheme
+                        ? 'linear-gradient(135deg, #F3D6C8 0%, #E8B4B8 58%, #C98F8F 100%)'
+                        : isNightlifeTheme
+                        ? 'radial-gradient(circle, #2EDBFF 0%, #6A5CFF 55%, #1A0C3D 100%)'
+                        : activeTheme.iconSoft,
+                      border: isFoodTheme ? '1px solid rgba(95,224,181,0.34)' : undefined,
+                      color: isMedicalTheme ? '#4A2D31' : activeTheme.primary,
+                      boxShadow: isFoodTheme
+                        ? 'none'
+                        : isMedicalTheme
+                        ? '0 6px 14px rgba(0,0,0,0.18)'
+                        : isNightlifeTheme
+                        ? '0 0 14px rgba(46,219,255,0.7)'
+                        : `0 0 12px ${activeTheme.primaryGlow}`,
+                    }}
+                  >
+                    <MapPin size={21} fill="currentColor" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[19px] font-extrabold leading-none">{displayStore.distance}km</span>
+                    <span className="block truncate text-[18px] font-extrabold leading-none">{displayStore.distance}km</span>
                     <span className="mt-0.5 block truncate text-[10px] text-white/66">
                       {t('approxSevenMinuteWalk')}
                     </span>
@@ -955,38 +1362,82 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={handleGoHere}
-                  className="tan-pressable flex h-11 items-center justify-center gap-2 rounded-full bg-[#66E1AA] text-[17px] font-extrabold text-[#073238] shadow-[0_10px_24px_rgba(102,225,170,0.22)]"
+                  className="tan-pressable flex h-11 items-center justify-center gap-1.5 rounded-full bg-[#66E1AA] text-[16px] font-extrabold text-[#073238] shadow-[0_10px_24px_rgba(102,225,170,0.22)]"
+                  style={{
+                    background: activeTheme.buttonBg,
+                    color: activeTheme.buttonText,
+                    border: isNightlifeTheme || isFoodTheme ? '1px solid rgba(255,255,255,0.28)' : undefined,
+                    animation: isNightlifeTheme ? 'tan-nightlife-glow 260ms ease-out' : undefined,
+                    boxShadow: isFoodTheme
+                      ? 'inset 0 1px 0 rgba(255,255,255,0.38), 0 8px 20px rgba(0,0,0,0.24)'
+                      : isMedicalTheme
+                      ? 'inset 0 1px 0 rgba(255,255,255,0.22), 0 8px 18px rgba(0,0,0,0.22)'
+                      : isNightlifeTheme
+                      ? '0 0 14px rgba(192,43,255,0.85), 0 0 28px rgba(255,79,216,0.45), inset 0 1px 1px rgba(255,255,255,0.35)'
+                      : `0 10px 24px ${activeTheme.primaryGlow}`,
+                  }}
                 >
                   {t('goHere')}
-                  <Send size={19} fill="#073238" />
+                  <Send size={18} fill="currentColor" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => toggleSave(currentStore.id)}
-                  aria-label={t('favorite')}
-                  className="tan-pressable grid h-9 w-9 place-items-center text-white"
-                >
-                  <Star
-                    size={21}
-                    className={savedStores.has(currentStore.id) ? 'fill-[#66E1AA] text-[#66E1AA]' : ''}
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={shareStore}
-                  aria-label={t('share')}
-                  className="tan-pressable grid h-9 w-9 place-items-center text-white"
-                >
-                  <Share2 size={21} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenMore}
-                  aria-label={t('more')}
-                  className="tan-pressable grid h-9 w-9 place-items-center text-white"
-                >
-                  <UsersRound size={22} />
-                </button>
+                <div className="flex min-w-0 justify-end gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleSave(currentStore.id)}
+                    aria-label={t('favorite')}
+                    className="tan-pressable grid h-8 w-8 place-items-center text-white min-[390px]:h-9 min-[390px]:w-9"
+                  >
+                    <Star
+                      size={21}
+                      className={savedStores.has(currentStore.id) ? 'fill-[#66E1AA] text-[#66E1AA]' : ''}
+                      style={
+                        isFoodTheme
+                          ? {
+                              color: savedStores.has(currentStore.id) ? '#5FE0B5' : 'rgba(255,255,255,0.86)',
+                              fill: savedStores.has(currentStore.id) ? '#5FE0B5' : 'transparent',
+                              filter: 'none',
+                            }
+                          : isMedicalTheme
+                          ? {
+                              color: '#E8B4B8',
+                              fill: savedStores.has(currentStore.id) ? '#E8B4B8' : 'transparent',
+                              filter: 'none',
+                            }
+                          : isNightlifeTheme
+                          ? {
+                              color: '#2EDBFF',
+                              fill: savedStores.has(currentStore.id) ? '#2EDBFF' : 'transparent',
+                              filter: 'drop-shadow(0 0 8px rgba(46,219,255,0.8))',
+                            }
+                          : savedStores.has(currentStore.id)
+                          ? { ...themedIconStyle, fill: activeTheme.primary }
+                          : themedIconStyle
+                      }
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={shareStore}
+                    aria-label={t('share')}
+                    className="tan-pressable grid h-8 w-8 place-items-center text-white min-[390px]:h-9 min-[390px]:w-9"
+                  >
+                    <Share2
+                      size={21}
+                      style={isFoodTheme ? { color: 'rgba(255,255,255,0.9)' } : isNightlifeTheme || isMedicalTheme ? { color: '#FFFFFF' } : themedIconStyle}
+                    />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleOpenMore}
+                    aria-label={t('more')}
+                    className="tan-pressable grid h-8 w-8 place-items-center text-white min-[390px]:h-9 min-[390px]:w-9"
+                  >
+                    <UsersRound
+                      size={22}
+                      style={isFoodTheme ? { color: 'rgba(255,255,255,0.9)' } : isNightlifeTheme || isMedicalTheme ? { color: '#FFFFFF' } : themedIconStyle}
+                    />
+                  </button>
+                </div>
               </div>
             </section>
           )}
@@ -1128,7 +1579,7 @@ export default function Home() {
             filteredTags={filteredTags}
             selectedTag={selectedTag}
             onTagSelect={handleTagSelect}
-            filteredStores={filteredStores}
+            filteredStores={searchFilteredStores}
             onStoreSelect={handleStoreSelectFromSearch}
           />
         )}
