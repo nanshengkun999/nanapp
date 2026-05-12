@@ -18,7 +18,10 @@ export interface Store {
 
 export const categories: Category[] = ['美食', '医美', '夜生活'];
 
-const storeVideoUrls = ['/videos/tanmap-spot-1.mp4', '/videos/tanmap-spot-2.mp4'];
+const storeVideoUrls = [
+  `${import.meta.env.BASE_URL}videos/tanmap-spot-1.mp4`,
+  `${import.meta.env.BASE_URL}videos/tanmap-spot-2.mp4`,
+];
 
 const baseStores: Store[] = [
   {

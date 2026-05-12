@@ -462,7 +462,7 @@ export default function Home() {
   };
 
   const shareStore = async () => {
-    const shareUrl = `${window.location.origin}/?share=${currentStore.id}`;
+    const shareUrl = `${window.location.origin}${import.meta.env.BASE_URL}?share=${currentStore.id}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       toast.success(t('shareCopied'));

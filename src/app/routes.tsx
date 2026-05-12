@@ -20,6 +20,8 @@ function OrdersPlaceholder() {
   );
 }
 
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -61,4 +63,4 @@ export const router = createBrowserRouter([
     path: '/orders',
     Component: OrdersPlaceholder,
   },
-]);
+], { basename });
