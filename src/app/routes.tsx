@@ -8,6 +8,8 @@ import ServiceProviderPage from './pages/ServiceProviderPage';
 import Forum from './pages/Forum';
 import Settings from './pages/Settings';
 import More from './pages/More';
+import NightlifeMeetups from './pages/NightlifeMeetups';
+import FoodMeetups from './pages/FoodMeetups';
 import { useLanguage } from './contexts/LanguageContext';
 
 function OrdersPlaceholder() {
@@ -50,6 +52,14 @@ export const router = createBrowserRouter([
   {
     path: '/forum',
     Component: Forum,
+  },
+  {
+    path: '/nightlife/meetups',
+    Component: NightlifeMeetups,
+  },
+  {
+    path: '/food/meetups',
+    Component: FoodMeetups,
   },
   {
     path: '/settings',

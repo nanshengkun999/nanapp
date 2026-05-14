@@ -155,6 +155,155 @@ a {
   animation: tan-enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+.theme-nightlife {
+  --night-bg: #050712;
+  --primary: #c02bff;
+  --secondary: #6a5cff;
+  --cyan: #2edbff;
+  --hot-pink: #ff4fd8;
+  --glass-bg: rgba(8, 10, 24, 0.58);
+  --glass-bg-strong: rgba(5, 7, 18, 0.76);
+  --glass-border: rgba(192, 43, 255, 0.42);
+  --text-main: #ffffff;
+  --text-sub: rgba(255, 255, 255, 0.72);
+}
+
+.theme-nightlife .top-pill {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(8, 10, 24, 0.42);
+  border: 1px solid rgba(192, 43, 255, 0.42);
+  border-radius: 999px;
+  box-shadow:
+    0 0 10px rgba(192, 43, 255, 0.25),
+    inset 0 0 12px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px);
+}
+
+.theme-nightlife .nightlife-tab-active {
+  color: #ffffff;
+  text-shadow:
+    0 0 8px rgba(255, 79, 216, 0.9),
+    0 0 14px rgba(106, 92, 255, 0.7);
+}
+
+.theme-nightlife .nightlife-thumb {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(192, 43, 255, 0.34);
+  background:
+    radial-gradient(circle at 72% 24%, rgba(255, 79, 216, 0.64), transparent 28%),
+    radial-gradient(circle at 18% 70%, rgba(46, 219, 255, 0.48), transparent 32%),
+    linear-gradient(135deg, rgba(17, 10, 40, 0.98), rgba(5, 7, 18, 0.96));
+  box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.04);
+}
+
+.theme-nightlife .nightlife-thumb::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    linear-gradient(115deg, transparent 0 18%, rgba(46, 219, 255, 0.34) 19% 20%, transparent 21% 44%, rgba(255, 79, 216, 0.32) 45% 46%, transparent 47%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 18px);
+  opacity: 0.8;
+}
+
+.theme-nightlife .nightlife-thumb::after {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 36px;
+  height: 36px;
+  content: "";
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85), rgba(192, 43, 255, 0.35) 38%, transparent 68%);
+  filter: blur(0.3px);
+}
+
+.theme-nightlife .nightlife-thumb span {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 1;
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 0 10px rgba(192, 43, 255, 0.8);
+}
+
+.theme-nightlife .nightlife-thumb-b1 {
+  background:
+    radial-gradient(circle at 22% 18%, rgba(46, 219, 255, 0.58), transparent 26%),
+    radial-gradient(circle at 78% 62%, rgba(255, 79, 216, 0.52), transparent 30%),
+    linear-gradient(135deg, rgba(21, 12, 48, 0.98), rgba(5, 7, 18, 0.96));
+}
+
+.theme-nightlife .nightlife-thumb-nb2 {
+  background:
+    radial-gradient(circle at 70% 18%, rgba(106, 92, 255, 0.72), transparent 28%),
+    radial-gradient(circle at 26% 64%, rgba(192, 43, 255, 0.56), transparent 32%),
+    linear-gradient(135deg, rgba(8, 18, 52, 0.98), rgba(5, 7, 18, 0.96));
+}
+
+.theme-food-meetups .food-top-pill {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(8, 12, 10, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 6px 18px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+.theme-food-meetups .food-thumb {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(circle at 76% 22%, rgba(95, 224, 181, 0.28), transparent 30%),
+    radial-gradient(circle at 20% 78%, rgba(242, 184, 75, 0.22), transparent 34%),
+    linear-gradient(135deg, rgba(36, 22, 10, 0.96), rgba(7, 12, 9, 0.96));
+}
+
+.theme-food-meetups .food-thumb::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background:
+    radial-gradient(ellipse at 50% 58%, rgba(255, 190, 120, 0.72) 0 18%, transparent 19%),
+    radial-gradient(ellipse at 32% 46%, rgba(165, 62, 40, 0.78) 0 12%, transparent 13%),
+    radial-gradient(ellipse at 68% 48%, rgba(94, 54, 34, 0.76) 0 13%, transparent 14%),
+    linear-gradient(115deg, transparent 0 42%, rgba(255, 255, 255, 0.1) 43% 45%, transparent 46%);
+  opacity: 0.88;
+}
+
+.theme-food-meetups .food-thumb span {
+  position: absolute;
+  left: 9px;
+  bottom: 9px;
+  z-index: 1;
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.theme-food-meetups .food-thumb-tteokbokki {
+  background:
+    radial-gradient(circle at 74% 24%, rgba(242, 184, 75, 0.28), transparent 30%),
+    radial-gradient(circle at 20% 76%, rgba(95, 224, 181, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(78, 20, 12, 0.96), rgba(8, 12, 9, 0.96));
+}
+
+.theme-food-meetups .food-thumb-cafe {
+  background:
+    radial-gradient(circle at 74% 24%, rgba(95, 224, 181, 0.24), transparent 30%),
+    radial-gradient(circle at 24% 72%, rgba(242, 184, 75, 0.18), transparent 36%),
+    linear-gradient(135deg, rgba(52, 32, 20, 0.96), rgba(8, 12, 9, 0.96));
+}
+
 @keyframes tan-enter {
   from {
     opacity: 0;

@@ -288,6 +288,7 @@ export default function Home() {
   useEffect(() => {
     const shareId = searchParams.get('share');
     const requestedMode = searchParams.get('mode');
+    const requestedCategory = searchParams.get('category');
     const shouldOpenSearch = searchParams.get('search') === '1';
 
     if (requestedMode === 'map') {
@@ -297,6 +298,30 @@ export default function Home() {
 
     if (shouldOpenSearch) {
       setIsSearchOpen(true);
+    }
+
+    if (requestedCategory) {
+      const nextContentId = normalizeHomeCategory(requestedCategory);
+      setSelectedCategory(getCategoryByContentId(nextContentId));
+      setSelectedTag(null);
+      setViewMode('video');
+      setIsPaused(false);
+      setCurrentIndex(0);
+    }
+
+    if (!requestedCategory && !shareId) {
+      const returnCategory = window.sessionStorage.getItem('tanmapReturnCategory');
+      const returnIndex = Number(window.sessionStorage.getItem('tanmapReturnIndex') ?? '0');
+      if (returnCategory) {
+        const nextContentId = normalizeHomeCategory(returnCategory);
+        setSelectedCategory(getCategoryByContentId(nextContentId));
+        setSelectedTag(null);
+        setViewMode('video');
+        setIsPaused(false);
+        setCurrentIndex(Number.isNaN(returnIndex) ? 0 : returnIndex);
+        window.sessionStorage.removeItem('tanmapReturnCategory');
+        window.sessionStorage.removeItem('tanmapReturnIndex');
+      }
     }
 
     if (!shareId) return;
@@ -670,6 +695,12 @@ export default function Home() {
 
   const handleOpenMore = () => {
     navigate('/more');
+  };
+
+  const handleOpenMeetups = () => {
+    window.sessionStorage.setItem('tanmapReturnCategory', currentChannel);
+    window.sessionStorage.setItem('tanmapReturnIndex', String(currentIndex));
+    navigate(isNightlifeTheme ? '/nightlife/meetups' : '/food/meetups');
   };
 
   const handleOpenService = () => {
@@ -1428,7 +1459,7 @@ export default function Home() {
                   </button>
                   <button
                     type="button"
-                    onClick={handleOpenMore}
+                    onClick={isNightlifeTheme || isFoodTheme ? handleOpenMeetups : handleOpenMore}
                     aria-label={t('more')}
                     className="tan-pressable grid h-8 w-8 place-items-center text-white min-[390px]:h-9 min-[390px]:w-9"
                   >

@@ -23,6 +23,8 @@ const storeVideoUrls = [
   `${import.meta.env.BASE_URL}videos/tanmap-spot-2.mp4`,
 ];
 
+const nightlifeVideoUrl = `${import.meta.env.BASE_URL}videos/tanmap-nightlife.mp4`;
+
 const baseStores: Store[] = [
   {
     id: '1',
@@ -283,5 +285,5 @@ const baseStores: Store[] = [
 
 export const stores: Store[] = baseStores.map((store, index) => ({
   ...store,
-  videoUrl: storeVideoUrls[index % storeVideoUrls.length],
+  videoUrl: store.category === categories[2] ? nightlifeVideoUrl : storeVideoUrls[index % storeVideoUrls.length],
 }));
