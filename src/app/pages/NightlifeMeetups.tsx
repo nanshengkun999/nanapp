@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 
 type RegionStatus = 'active' | 'coming_soon';
 
@@ -113,6 +114,7 @@ const avatarGradients = [
 export default function NightlifeMeetups() {
   const navigate = useNavigate();
   const [selectedRegionId] = useState('hongdae');
+  const [isSaved, setIsSaved] = useState(false);
   const selectedRegion = regions.find((region) => region.id === selectedRegionId) ?? regions[0];
   const visibleMeetups = useMemo(
     () => nightlifeMeetups.filter((meetup) => meetup.regionId === selectedRegionId).slice(0, 3),
@@ -126,25 +128,70 @@ export default function NightlifeMeetups() {
     }
     navigate('/?category=nightlife');
   };
-  const handleRegionSelect = () => console.log('open region selector', selectedRegionId);
-  const handleJoinMeetup = (meetupId: string) => console.log('join meetup', meetupId);
-  const handleStoreLink = (meetupId: string) => console.log('open store link', meetupId);
-  const handleCreateMeetup = () => console.log('create nightlife meetup');
-  const handleSave = () => console.log('save nightlife meetup page');
-  const handleShare = () => console.log('share nightlife meetup page');
+
+  const handleTopAction = (label: string) => {
+    if (label === '小圈子') navigate('/forum');
+    if (label === '本地搭子') toast.info('当前已在找蹦迪搭子页');
+    if (label === '我的') navigate('/more');
+    if (label === '收藏夹') navigate('/saved');
+  };
+
+  const handleCategorySelect = (tab: string) => {
+    const routes: Record<string, string> = {
+      地图: '/?mode=map',
+      美食: '/?category=food',
+      医美: '/?category=medical',
+      夜生活: '/?category=nightlife',
+    };
+    navigate(routes[tab] ?? '/?category=nightlife');
+  };
+
+  const handleRegionSelect = () => {
+    toast.info(`${selectedRegion.name}已开放，其他生活圈即将开放`);
+  };
+
+  const handleJoinMeetup = (meetupId: string) => {
+    const meetup = nightlifeMeetups.find((item) => item.id === meetupId);
+    toast.success(`已发送加入申请：${meetup?.storeName ?? '蹦迪组队'}`);
+  };
+
+  const handleStoreLink = (meetupId: string) => {
+    const meetup = nightlifeMeetups.find((item) => item.id === meetupId);
+    toast.info(`${meetup?.storeName ?? '店铺'}详情页稍后开放`);
+  };
+
+  const handleCreateMeetup = () => {
+    toast.info('发起组队功能准备中');
+  };
+
+  const handleSave = () => {
+    setIsSaved((current) => {
+      toast.success(current ? '已取消收藏' : '已收藏找蹦迪搭子页');
+      return !current;
+    });
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('链接已复制');
+    } catch {
+      toast.error('复制失败，请稍后再试');
+    }
+  };
 
   return (
     <main className="theme-nightlife tan-mobile-frame relative h-dvh overflow-hidden bg-[var(--night-bg)] text-[var(--text-main)]">
       <video
         src={`${import.meta.env.BASE_URL}videos/tanmap-nightlife.mp4`}
-        className="absolute inset-0 h-full w-full object-cover opacity-70"
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-70"
         muted
         loop
         playsInline
         autoPlay
       />
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(3,5,15,0.78)_0%,rgba(3,5,15,0.26)_32%,rgba(3,5,15,0.36)_62%,rgba(3,5,15,0.88)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_14%,rgba(192,43,255,0.24),transparent_34%),radial-gradient(circle_at_22%_58%,rgba(46,219,255,0.12),transparent_32%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(3,5,15,0.78)_0%,rgba(3,5,15,0.26)_32%,rgba(3,5,15,0.36)_62%,rgba(3,5,15,0.88)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_14%,rgba(192,43,255,0.24),transparent_34%),radial-gradient(circle_at_22%_58%,rgba(46,219,255,0.12),transparent_32%)]" />
 
       <header className="absolute inset-x-0 top-0 z-30 px-5 pt-[calc(12px+env(safe-area-inset-top))]">
         <div className="flex min-h-8 items-center gap-2">
@@ -153,18 +200,18 @@ export default function NightlifeMeetups() {
           </h1>
           <div className="ml-auto flex min-w-0 max-w-[calc(100vw-128px)] items-center justify-end gap-1 overflow-x-auto tan-scrollbar-hide">
             {['小圈子', '本地搭子', '我的', '收藏夹'].map((label) => (
-              <button key={label} type="button" className="top-pill h-7 shrink-0 px-2 text-[11px] font-semibold min-[410px]:h-8 min-[410px]:px-2.5 min-[410px]:text-[12px]">
+              <button key={label} type="button" onClick={() => handleTopAction(label)} className="top-pill h-7 shrink-0 px-2 text-[11px] font-semibold min-[410px]:h-8 min-[410px]:px-2.5 min-[410px]:text-[12px]">
                 {label}
               </button>
             ))}
-            <button type="button" aria-label="搜索" className="top-pill grid h-7 w-7 shrink-0 place-items-center rounded-full min-[410px]:h-8 min-[410px]:w-8">
+            <button type="button" aria-label="搜索" onClick={() => navigate('/?search=1')} className="top-pill grid h-7 w-7 shrink-0 place-items-center rounded-full min-[410px]:h-8 min-[410px]:w-8">
               <Search size={16} strokeWidth={1.9} />
             </button>
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-[22px_1fr_22px] items-center gap-1">
-          <button type="button" className="grid h-7 w-6 place-items-center text-white/78">
+          <button type="button" onClick={() => handleCategorySelect('医美')} className="grid h-7 w-6 place-items-center text-white/78">
             <ChevronRight className="rotate-180" size={23} />
           </button>
           <nav className="grid grid-cols-4 items-start">
@@ -174,6 +221,7 @@ export default function NightlifeMeetups() {
                 <div key={tab} className="relative flex h-11 flex-col items-center justify-start">
                   <button
                     type="button"
+                    onClick={() => handleCategorySelect(tab)}
                     className={`flex h-8 flex-col items-center justify-start text-[15px] font-semibold tracking-normal ${
                       active ? 'text-white' : 'text-white/68'
                     }`}
@@ -192,7 +240,7 @@ export default function NightlifeMeetups() {
               );
             })}
           </nav>
-          <button type="button" className="grid h-7 w-6 place-items-center text-white/78">
+          <button type="button" onClick={() => handleCategorySelect('地图')} className="grid h-7 w-6 place-items-center text-white/78">
             <ChevronRight size={23} />
           </button>
         </div>
@@ -206,7 +254,7 @@ export default function NightlifeMeetups() {
             </h2>
             <p className="mt-1 text-[15px] font-medium text-white/72">一起去本地人常去的夜店</p>
           </div>
-          <button type="button" className="top-pill flex h-10 shrink-0 items-center gap-2 px-4 text-[13px] font-semibold">
+          <button type="button" onClick={() => toast.info('我的约酒功能准备中')} className="top-pill flex h-10 shrink-0 items-center gap-2 px-4 text-[13px] font-semibold">
             <Star size={17} fill="currentColor" />
             我的约酒
           </button>
@@ -269,13 +317,13 @@ export default function NightlifeMeetups() {
           <Plus size={19} />
           发起组队
         </button>
-        <button type="button" onClick={handleSave} aria-label="收藏" className="grid h-11 place-items-center text-white/90">
-          <Star size={24} />
+        <button type="button" onClick={handleSave} aria-label="收藏" className={`grid h-11 place-items-center ${isSaved ? 'text-[#2EDBFF]' : 'text-white/90'}`}>
+          <Star size={24} fill={isSaved ? 'currentColor' : 'none'} />
         </button>
         <button type="button" onClick={handleShare} aria-label="分享" className="grid h-11 place-items-center text-white/90">
           <Share2 size={23} />
         </button>
-        <button type="button" aria-label="搭子" className="grid h-11 place-items-center rounded-full text-[#FF4FD8] shadow-[0_0_18px_rgba(192,43,255,0.4)]">
+        <button type="button" onClick={() => toast.info('当前已在找蹦迪搭子页')} aria-label="搭子" className="grid h-11 place-items-center rounded-full text-[#FF4FD8] shadow-[0_0_18px_rgba(192,43,255,0.4)]">
           <UsersRound size={25} fill="currentColor" />
         </button>
       </nav>
