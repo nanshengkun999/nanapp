@@ -59,6 +59,13 @@ const regions: Region[] = [
     areas: ['圣水', '纛岛', '首尔林'],
   },
   {
+    id: 'geondae',
+    name: '建大生活圈',
+    status: 'coming_soon',
+    label: '即将开放',
+    areas: ['建大', '华阳', '儿童大公园'],
+  },
+  {
     id: 'gangnam',
     name: '江南生活圈',
     status: 'planned',
@@ -120,7 +127,8 @@ const avatarGradients = [
 
 export default function FoodMeetups() {
   const navigate = useNavigate();
-  const [selectedRegionId] = useState('hongdae');
+  const [selectedRegionId, setSelectedRegionId] = useState('hongdae');
+  const [isRegionMenuOpen, setIsRegionMenuOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const selectedRegion = regions.find((region) => region.id === selectedRegionId) ?? regions[0];
   const visibleMeetups = useMemo(
@@ -154,7 +162,17 @@ export default function FoodMeetups() {
   };
 
   const handleRegionSelect = () => {
-    toast.info(`${selectedRegion.name}已开放，其他生活圈即将开放`);
+    setIsRegionMenuOpen((current) => !current);
+  };
+
+  const handleRegionOptionSelect = (region: Region) => {
+    if (region.status !== 'active') {
+      toast.info(`${region.name}${region.label}`);
+      return;
+    }
+
+    setSelectedRegionId(region.id);
+    setIsRegionMenuOpen(false);
   };
 
   const handleJoinMeetup = (meetupId: string) => {
@@ -202,9 +220,9 @@ export default function FoodMeetups() {
 
       <header className="absolute inset-x-0 top-0 z-30 px-5 pt-[calc(12px+env(safe-area-inset-top))]">
         <div className="flex min-h-8 items-center gap-2">
-          <h1 className="shrink-0 bg-[linear-gradient(135deg,#8FF3D0_0%,#5FE0B5_48%,#48D6A0_100%)] bg-clip-text text-[22px] font-extrabold leading-none tracking-normal text-transparent">
+          <button type="button" onClick={() => navigate('/?category=food')} className="shrink-0 bg-[linear-gradient(135deg,#8FF3D0_0%,#5FE0B5_48%,#48D6A0_100%)] bg-clip-text text-[22px] font-extrabold leading-none tracking-normal text-transparent">
             Tanmap
-          </h1>
+          </button>
           <div className="ml-auto flex min-w-0 max-w-[calc(100vw-128px)] items-center justify-end gap-1 overflow-x-auto tan-scrollbar-hide">
             {['小圈子', '本地搭子', '我的', '收藏夹'].map((label) => (
               <button key={label} type="button" onClick={() => handleTopAction(label)} className="food-top-pill h-7 shrink-0 px-2 text-[11px] font-semibold min-[410px]:h-8 min-[410px]:px-2.5 min-[410px]:text-[12px]">
@@ -267,17 +285,41 @@ export default function FoodMeetups() {
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={handleRegionSelect}
-          className="mb-3 flex h-11 items-center gap-2 rounded-full border border-[rgba(72,240,180,0.48)] bg-[rgba(8,12,10,0.42)] px-4 text-[15px] font-semibold text-white shadow-[0_0_14px_rgba(72,240,180,0.22)] backdrop-blur-[14px]"
-        >
-          <MapPin size={18} className="text-[#48F0B4]" fill="currentColor" />
-          <Check size={16} className="text-[#48F0B4]" />
-          <span>{selectedRegion.name}</span>
-          <span className="text-[#48F0B4]">（{selectedRegion.label}）</span>
-          <ChevronDown size={18} className="ml-auto" />
-        </button>
+        <div className="relative mb-3">
+          <button
+            type="button"
+            onClick={handleRegionSelect}
+            aria-expanded={isRegionMenuOpen}
+            className="flex h-11 w-full max-w-[368px] items-center gap-2 rounded-full border border-[rgba(72,240,180,0.48)] bg-[rgba(8,12,10,0.42)] px-4 text-[15px] font-semibold text-white shadow-[0_0_14px_rgba(72,240,180,0.22)] backdrop-blur-[14px]"
+          >
+            <MapPin size={18} className="text-[#48F0B4]" fill="currentColor" />
+            <Check size={16} className="text-[#48F0B4]" />
+            <span>{selectedRegion.name}</span>
+            <span className="text-[#48F0B4]">（{selectedRegion.label}）</span>
+            <ChevronDown size={18} className={`ml-auto transition-transform ${isRegionMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isRegionMenuOpen && (
+            <div className="absolute left-0 right-0 top-[50px] z-40 max-w-[368px] rounded-[20px] border border-[rgba(72,240,180,0.34)] bg-[rgba(8,12,10,0.88)] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.34),0_0_18px_rgba(72,240,180,0.16)] backdrop-blur-[18px]">
+              {regions.map((region) => {
+                const active = region.status === 'active';
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => handleRegionOptionSelect(region)}
+                    className={`flex h-11 w-full items-center justify-between rounded-[16px] px-3 text-left text-[14px] font-semibold transition ${
+                      active ? 'text-white hover:bg-[rgba(72,240,180,0.12)]' : 'text-white/58 hover:bg-white/6'
+                    }`}
+                  >
+                    <span>{active ? '✅' : '🔒'} {region.name}</span>
+                    <span className={active ? 'text-[#48F0B4]' : 'text-white/48'}>（{region.label}）</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="mb-3 flex items-center justify-between gap-2 text-[12px] font-medium text-white/68">
           <div className="flex min-w-0 items-center gap-2">
@@ -311,28 +353,30 @@ export default function FoodMeetups() {
         </section>
       </section>
 
-      <nav className="absolute inset-x-4 bottom-[calc(14px+env(safe-area-inset-bottom))] z-30 grid h-[64px] grid-cols-[0.8fr_1.65fr_0.56fr_0.56fr_0.56fr] items-center gap-2 rounded-[22px] border border-white/14 bg-[rgba(8,12,10,0.72)] px-2 shadow-[0_10px_28px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[18px]">
-        <button type="button" onClick={handleBack} className="flex h-12 items-center justify-center gap-1.5 rounded-full text-[14px] font-semibold text-white">
+      <nav className="absolute inset-x-4 bottom-[calc(14px+env(safe-area-inset-bottom))] z-30 grid h-[64px] grid-cols-[minmax(0,1fr)_166px_minmax(0,1fr)] items-center gap-1 rounded-[22px] border border-white/14 bg-[rgba(8,12,10,0.72)] px-3 shadow-[0_10px_28px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[18px] min-[410px]:grid-cols-[minmax(0,1fr)_184px_minmax(0,1fr)]">
+        <button type="button" onClick={handleBack} className="flex h-12 justify-self-start items-center justify-center gap-1.5 rounded-full pr-2 text-[14px] font-semibold text-white">
           <ChevronRight className="rotate-180" size={21} />
           返回
         </button>
         <button
           type="button"
           onClick={handleCreateMeetup}
-          className="flex h-12 items-center justify-center gap-2 rounded-full border border-white/28 bg-[linear-gradient(135deg,#8FF3D0_0%,#5FE0B5_48%,#48D6A0_100%)] text-[16px] font-extrabold text-[#073B32] shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_8px_20px_rgba(0,0,0,0.24)]"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/28 bg-[linear-gradient(135deg,#8FF3D0_0%,#5FE0B5_48%,#48D6A0_100%)] text-[16px] font-extrabold text-[#073B32] shadow-[inset_0_1px_0_rgba(255,255,255,0.38),0_8px_20px_rgba(0,0,0,0.24)]"
         >
           <Plus size={19} />
           发起约饭
         </button>
-        <button type="button" onClick={handleSave} aria-label="收藏" className={`grid h-11 place-items-center ${isSaved ? 'text-[#48F0B4]' : 'text-white/90'}`}>
-          <Star size={24} fill={isSaved ? 'currentColor' : 'none'} />
-        </button>
-        <button type="button" onClick={handleShare} aria-label="分享" className="grid h-11 place-items-center text-white/90">
-          <Share2 size={23} />
-        </button>
-        <button type="button" onClick={() => toast.info('当前已在找饭搭子页')} aria-label="搭子" className="grid h-11 place-items-center rounded-full text-[#48F0B4]">
-          <UsersRound size={25} fill="currentColor" />
-        </button>
+        <div className="flex justify-self-end items-center gap-1">
+          <button type="button" onClick={handleSave} aria-label="收藏" className={`grid h-11 w-9 place-items-center ${isSaved ? 'text-[#48F0B4]' : 'text-white/90'}`}>
+            <Star size={24} fill={isSaved ? 'currentColor' : 'none'} />
+          </button>
+          <button type="button" onClick={handleShare} aria-label="分享" className="grid h-11 w-9 place-items-center text-white/90">
+            <Share2 size={23} />
+          </button>
+          <button type="button" onClick={() => toast.info('当前已在找饭搭子页')} aria-label="搭子" className="grid h-11 w-9 place-items-center rounded-full text-[#48F0B4]">
+            <UsersRound size={25} fill="currentColor" />
+          </button>
+        </div>
       </nav>
     </main>
   );

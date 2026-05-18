@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import type { TouchEvent } from 'react';
+import type { UIEvent, TouchEvent } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -267,6 +267,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>('video');
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [autoplayMutedFallback, setAutoplayMutedFallback] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [preloadIndexes, setPreloadIndexes] = useState<Set<number>>(() => new Set([0, 1, 2, 3]));
@@ -282,6 +283,7 @@ export default function Home() {
   const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
   const itemRefs = useRef<Map<number, HTMLElement>>(new Map());
   const preloadedVideosRef = useRef<Map<string, PreloadedVideo>>(new Map());
+  const scrollRafRef = useRef<number | null>(null);
   const touchStartY = useRef(0);
   const touchStartX = useRef(0);
 
@@ -397,6 +399,7 @@ export default function Home() {
   const isNightlifeTheme = viewMode === 'video' && currentChannel === 'nightlife';
   const isMedicalTheme = viewMode === 'video' && currentChannel === 'medical';
   const isFoodTheme = viewMode === 'video' && currentChannel === 'food';
+  const showFullTopControls = viewMode !== 'video' || isPaused;
   const themedPillStyle: CSSProperties = {
     backgroundColor: activeTheme.topBg,
     borderColor: isFoodTheme ? 'rgba(255,255,255,0.18)' : activeTheme.border,
@@ -576,6 +579,13 @@ export default function Home() {
   const handleTouchStart = (event: TouchEvent) => {
     touchStartY.current = event.touches[0].clientY;
     touchStartX.current = event.touches[0].clientX;
+
+    if (autoplayMutedFallback) {
+      const video = videoRefs.current.get(currentIndex);
+      if (video) video.muted = false;
+      setIsMuted(false);
+      setAutoplayMutedFallback(false);
+    }
   };
 
   const handleTouchEnd = (event: TouchEvent) => {
@@ -717,7 +727,22 @@ export default function Home() {
 
     video.muted = isMuted;
     video.play().catch(() => {
-      setIsPaused(true);
+      if (isMuted) {
+        setIsPaused(true);
+        return;
+      }
+
+      video.muted = true;
+      video
+        .play()
+        .then(() => {
+          setIsMuted(true);
+          setIsPaused(false);
+          setAutoplayMutedFallback(true);
+        })
+        .catch(() => {
+          setIsPaused(true);
+        });
     });
   };
 
@@ -730,6 +755,18 @@ export default function Home() {
     setCurrentIndex(index);
     setVideoProgress(0);
     setIsPaused(false);
+  };
+
+  const handleVideoScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (scrollRafRef.current !== null) return;
+
+    const container = event.currentTarget;
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const nextIndex = Math.round(container.scrollTop / Math.max(1, container.clientHeight));
+      const boundedIndex = Math.max(0, Math.min(filteredStores.length - 1, nextIndex));
+      if (boundedIndex !== currentIndex) handleVideoChange(boundedIndex);
+    });
   };
 
   const handleVideoTimeUpdate = () => {
@@ -768,14 +805,8 @@ export default function Home() {
 
   useEffect(() => {
     if (viewMode !== 'video') return;
-    const container = scrollContainerRef.current;
-    const activeItem = itemRefs.current.get(currentIndex);
-    if (!container || !activeItem) return;
-
-    const expectedTop = currentIndex * container.clientHeight;
-    if (Math.abs(container.scrollTop - expectedTop) < 3) return;
-    activeItem.scrollIntoView({ block: 'start', behavior: 'auto' });
-  }, [currentIndex, selectedCategory, viewMode]);
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'auto' });
+  }, [selectedCategory, viewMode]);
 
   useEffect(() => {
     if (viewMode !== 'video') return;
@@ -804,6 +835,7 @@ export default function Home() {
 
   useEffect(() => {
     return () => {
+      if (scrollRafRef.current !== null) window.cancelAnimationFrame(scrollRafRef.current);
       preloadedVideosRef.current.forEach((entry) => disposePreloadVideo(entry.video));
       preloadedVideosRef.current.clear();
     };
@@ -827,6 +859,7 @@ export default function Home() {
           >
             <div
               ref={scrollContainerRef}
+              onScroll={handleVideoScroll}
               className="h-full w-full snap-y snap-mandatory overflow-y-scroll overscroll-contain tan-scrollbar-hide"
               style={{ WebkitOverflowScrolling: 'touch' }}
             >
@@ -895,6 +928,7 @@ export default function Home() {
               aria-label={isMuted ? t('unmuteVideo') : t('muteVideo')}
               onClick={(event) => {
                 event.stopPropagation();
+                setAutoplayMutedFallback(false);
                 setIsMuted((previous) => !previous);
               }}
               className="tan-pressable pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-white/22 bg-black/36 text-white backdrop-blur-md transition-all duration-[180ms]"
@@ -1003,7 +1037,7 @@ export default function Home() {
               )}
               {viewMode === 'map' ? (
                 <span className="ml-auto h-9 w-20" aria-hidden="true" />
-              ) : (
+              ) : showFullTopControls ? (
                 <div className="ml-auto flex min-w-0 max-w-[calc(100vw-128px)] items-center justify-end gap-1 overflow-x-auto tan-scrollbar-hide">
                   <button
                     type="button"
@@ -1047,147 +1081,159 @@ export default function Home() {
                     <Search size={16} strokeWidth={1.9} />
                   </button>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  aria-label={t('search')}
+                  onClick={handleOpenSearch}
+                  className="tan-pressable ml-auto grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/24 bg-black/14 text-white shadow-[0_4px_14px_rgba(0,0,0,0.18)] backdrop-blur-md"
+                  style={themedPillStyle}
+                >
+                  <Search size={17} strokeWidth={1.9} />
+                </button>
               )}
             </div>
 
-            <div className="mt-4 grid grid-cols-[22px_1fr_22px] items-center gap-1 text-white">
-              <button
-                type="button"
-                aria-label={t('previousCategory')}
-                onClick={() => handleHomeTabSelect(activeHomeTabIndex - 1)}
-                className="tan-pressable grid h-7 w-6 place-items-center text-white/62"
-                style={themedIconStyle}
-              >
-                <ChevronLeft size={23} strokeWidth={2.1} />
-              </button>
-              <nav className="grid grid-cols-4 items-start" aria-label="Tanmap categories">
-                {orderedHomeTabs.map((tab, index) => {
-                  const isActive = activeHomeTabIndex === index;
-                  const isContentTab = tab.type === 'content';
-                  const isHomeCategory = isContentTab && tab.id === homeCategory;
+            {showFullTopControls && (
+              <div className="mt-4 grid grid-cols-[22px_1fr_22px] items-center gap-1 text-white">
+                <button
+                  type="button"
+                  aria-label={t('previousCategory')}
+                  onClick={() => handleHomeTabSelect(activeHomeTabIndex - 1)}
+                  className="tan-pressable grid h-7 w-6 place-items-center text-white/62"
+                  style={themedIconStyle}
+                >
+                  <ChevronLeft size={23} strokeWidth={2.1} />
+                </button>
+                <nav className="grid grid-cols-4 items-start" aria-label="Tanmap categories">
+                  {orderedHomeTabs.map((tab, index) => {
+                    const isActive = activeHomeTabIndex === index;
+                    const isContentTab = tab.type === 'content';
+                    const isHomeCategory = isContentTab && tab.id === homeCategory;
 
-                  return (
-                    <div
-                      key={tab.id}
-                      className="relative flex h-11 flex-col items-center justify-start"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleHomeTabSelect(index)}
-                        className={`tan-pressable flex h-8 flex-col items-center justify-start text-[15px] font-semibold tracking-normal ${
-                          isActive ? 'text-white' : 'text-white/60'
-                        }`}
-                        style={
-                          isActive
-                            ? {
-                                color: isFoodTheme ? '#FFFFFF' : isMedicalTheme ? '#F3D6C8' : undefined,
-                                fontWeight: isFoodTheme ? 700 : undefined,
-                                textShadow: isFoodTheme || isMedicalTheme
-                                  ? 'none'
-                                  : isNightlifeTheme
-                                  ? '0 0 8px rgba(255,79,216,0.9), 0 0 14px rgba(106,92,255,0.7)'
-                                  : `0 0 12px ${activeTheme.primaryGlow}`,
-                              }
-                            : isFoodTheme
-                            ? { color: 'rgba(255,255,255,0.62)', fontWeight: 600 }
-                            : isMedicalTheme
-                            ? { color: 'rgba(255,255,255,0.68)' }
-                            : undefined
-                        }
+                    return (
+                      <div
+                        key={tab.id}
+                        className="relative flex h-11 flex-col items-center justify-start"
                       >
-                        <span>{t(tab.labelKey)}</span>
-                        {isActive && (
-                          <motion.span
-                            layoutId="home-category-underline"
-                            className="mt-1 h-0.5 w-8 rounded-full bg-[#62E0B0] shadow-[0_0_12px_rgba(98,224,176,0.7)]"
-                            style={{
-                              height: isNightlifeTheme || isFoodTheme ? 3 : undefined,
-                              background: isFoodTheme
-                                ? 'linear-gradient(90deg, #8FF3D0, #5FE0B5, #48D6A0)'
-                                : isMedicalTheme
-                                ? 'linear-gradient(90deg, #F3D6C8, #E8B4B8, #C98F8F)'
-                                : isNightlifeTheme
-                                ? 'linear-gradient(90deg, #FF4FD8, #C02BFF, #2EDBFF)'
-                                : activeTheme.primary,
-                              boxShadow: isFoodTheme
-                                ? '0 0 8px rgba(95,224,181,0.35)'
-                                : isMedicalTheme
-                                ? 'none'
-                                : isNightlifeTheme
-                                ? '0 0 8px rgba(192,43,255,0.9), 0 0 16px rgba(46,219,255,0.45)'
-                                : `0 0 14px ${activeTheme.primaryGlow}`,
-                            }}
-                            transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
-                          />
-                        )}
-                      </button>
-                      {viewMode === 'video' && isPaused && isContentTab && (
                         <button
                           type="button"
-                          aria-label={`${t('setHomeCategory')}: ${t(tab.labelKey)}`}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleSetHomeCategory(tab.id);
-                          }}
-                          className={`tan-pressable absolute top-7 grid h-5 w-5 place-items-center rounded-full transition-colors ${
-                            isHomeCategory
-                              ? 'text-[#62E0B0] drop-shadow-[0_0_8px_rgba(98,224,176,0.75)]'
-                              : 'text-white/72'
+                          onClick={() => handleHomeTabSelect(index)}
+                          className={`tan-pressable flex h-8 flex-col items-center justify-start text-[15px] font-semibold tracking-normal ${
+                            isActive ? 'text-white' : 'text-white/60'
                           }`}
                           style={
-                            isHomeCategory
-                              ? isFoodTheme
-                                ? {
-                                    color: '#5FE0B5',
-                                    fill: '#5FE0B5',
-                                    filter: 'drop-shadow(0 0 6px rgba(95,224,181,0.42))',
-                                    transform: 'scale(1.06)',
-                                  }
-                                : isMedicalTheme
-                                ? {
-                                    color: '#E8B4B8',
-                                    filter: 'none',
-                                  }
-                                : isNightlifeTheme
-                                ? {
-                                    color: '#FF4FD8',
-                                    filter: 'drop-shadow(0 0 8px rgba(255,79,216,0.95))',
-                                    transform: 'scale(1.08)',
-                                  }
-                                : themedIconStyle
+                            isActive
+                              ? {
+                                  color: isFoodTheme ? '#FFFFFF' : isMedicalTheme ? '#F3D6C8' : undefined,
+                                  fontWeight: isFoodTheme ? 700 : undefined,
+                                  textShadow: isFoodTheme || isMedicalTheme
+                                    ? 'none'
+                                    : isNightlifeTheme
+                                    ? '0 0 8px rgba(255,79,216,0.9), 0 0 14px rgba(106,92,255,0.7)'
+                                    : `0 0 12px ${activeTheme.primaryGlow}`,
+                                }
                               : isFoodTheme
-                              ? { color: 'rgba(255,255,255,0.58)', fill: 'rgba(255,255,255,0.58)', filter: 'none' }
+                              ? { color: 'rgba(255,255,255,0.62)', fontWeight: 600 }
                               : isMedicalTheme
-                              ? { color: 'rgba(255,255,255,0.62)' }
-                              : isNightlifeTheme
-                              ? { color: 'rgba(255,255,255,0.58)' }
+                              ? { color: 'rgba(255,255,255,0.68)' }
                               : undefined
                           }
                         >
-                          <House size={14} fill="currentColor" strokeWidth={2} />
+                          <span>{t(tab.labelKey)}</span>
+                          {isActive && (
+                            <motion.span
+                              layoutId="home-category-underline"
+                              className="mt-1 h-0.5 w-8 rounded-full bg-[#62E0B0] shadow-[0_0_12px_rgba(98,224,176,0.7)]"
+                              style={{
+                                height: isNightlifeTheme || isFoodTheme ? 3 : undefined,
+                                background: isFoodTheme
+                                  ? 'linear-gradient(90deg, #8FF3D0, #5FE0B5, #48D6A0)'
+                                  : isMedicalTheme
+                                  ? 'linear-gradient(90deg, #F3D6C8, #E8B4B8, #C98F8F)'
+                                  : isNightlifeTheme
+                                  ? 'linear-gradient(90deg, #FF4FD8, #C02BFF, #2EDBFF)'
+                                  : activeTheme.primary,
+                                boxShadow: isFoodTheme
+                                  ? '0 0 8px rgba(95,224,181,0.35)'
+                                  : isMedicalTheme
+                                  ? 'none'
+                                  : isNightlifeTheme
+                                  ? '0 0 8px rgba(192,43,255,0.9), 0 0 16px rgba(46,219,255,0.45)'
+                                  : `0 0 14px ${activeTheme.primaryGlow}`,
+                              }}
+                              transition={{ duration: 0.24, ease: [0.2, 0.8, 0.2, 1] }}
+                            />
+                          )}
                         </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </nav>
-              <button
-                type="button"
-                aria-label={t('nextCategory')}
-                onClick={() => handleHomeTabSelect(activeHomeTabIndex + 1)}
-                className="tan-pressable grid h-7 w-6 place-items-center text-white/62"
-                style={themedIconStyle}
-              >
-                <ChevronRight size={23} strokeWidth={2.1} />
-              </button>
-            </div>
+                        {viewMode === 'video' && isPaused && isContentTab && (
+                          <button
+                            type="button"
+                            aria-label={`${t('setHomeCategory')}: ${t(tab.labelKey)}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleSetHomeCategory(tab.id);
+                            }}
+                            className={`tan-pressable absolute top-7 grid h-5 w-5 place-items-center rounded-full transition-colors ${
+                              isHomeCategory
+                                ? 'text-[#62E0B0] drop-shadow-[0_0_8px_rgba(98,224,176,0.75)]'
+                                : 'text-white/72'
+                            }`}
+                            style={
+                              isHomeCategory
+                                ? isFoodTheme
+                                  ? {
+                                      color: '#5FE0B5',
+                                      fill: '#5FE0B5',
+                                      filter: 'drop-shadow(0 0 6px rgba(95,224,181,0.42))',
+                                      transform: 'scale(1.06)',
+                                    }
+                                  : isMedicalTheme
+                                  ? {
+                                      color: '#E8B4B8',
+                                      filter: 'none',
+                                    }
+                                  : isNightlifeTheme
+                                  ? {
+                                      color: '#FF4FD8',
+                                      filter: 'drop-shadow(0 0 8px rgba(255,79,216,0.95))',
+                                      transform: 'scale(1.08)',
+                                    }
+                                  : themedIconStyle
+                                : isFoodTheme
+                                ? { color: 'rgba(255,255,255,0.58)', fill: 'rgba(255,255,255,0.58)', filter: 'none' }
+                                : isMedicalTheme
+                                ? { color: 'rgba(255,255,255,0.62)' }
+                                : isNightlifeTheme
+                                ? { color: 'rgba(255,255,255,0.58)' }
+                                : undefined
+                            }
+                          >
+                            <House size={14} fill="currentColor" strokeWidth={2} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </nav>
+                <button
+                  type="button"
+                  aria-label={t('nextCategory')}
+                  onClick={() => handleHomeTabSelect(activeHomeTabIndex + 1)}
+                  className="tan-pressable grid h-7 w-6 place-items-center text-white/62"
+                  style={themedIconStyle}
+                >
+                  <ChevronRight size={23} strokeWidth={2.1} />
+                </button>
+              </div>
+            )}
           </header>
 
           {viewMode === 'video' && (
             <section className="absolute inset-x-0 bottom-[calc(18px+env(safe-area-inset-bottom))] z-30 px-3">
-              <div className="mb-4 max-w-[82%]">
+              <div className="mb-2.5 max-w-[82%]">
                 <h2
-                  className="mb-1 truncate text-[26px] font-extrabold leading-tight tracking-normal text-white drop-shadow-[0_3px_16px_rgba(0,0,0,0.45)]"
+                  className="mb-0.5 truncate text-[23px] font-extrabold leading-[1.08] tracking-normal text-white drop-shadow-[0_3px_16px_rgba(0,0,0,0.45)]"
                   style={{
                     color: '#FFFFFF',
                     textShadow: isFoodTheme
@@ -1201,9 +1247,9 @@ export default function Home() {
                 >
                   {displayStore.name}
                 </h2>
-                <p className="mb-1.5 flex items-center gap-1.5 truncate text-[12px] font-medium text-white/82">
+                <p className="mb-1 flex items-center gap-1 truncate text-[11px] font-medium leading-tight text-white/82">
                   <MapPin
-                    size={14}
+                    size={12}
                     className="shrink-0"
                     style={
                       isFoodTheme
@@ -1219,10 +1265,10 @@ export default function Home() {
                 </p>
                 {displayStore.description && (
                   <p
-                    className="mb-2 line-clamp-1 text-[12px] font-medium text-white/78"
+                    className="mb-1.5 line-clamp-1 text-[11px] font-medium leading-snug text-white/78"
                     style={
                       isFoodTheme
-                        ? { color: 'rgba(255,255,255,0.78)', lineHeight: 1.45 }
+                        ? { color: 'rgba(255,255,255,0.78)', lineHeight: 1.28 }
                         : isMedicalTheme
                         ? { color: 'rgba(255,255,255,0.76)' }
                         : undefined
@@ -1231,13 +1277,13 @@ export default function Home() {
                     {displayStore.description}
                   </p>
                 )}
-                <div className="flex gap-3 overflow-x-auto tan-scrollbar-hide">
+                <div className="flex gap-1.5 overflow-x-auto tan-scrollbar-hide">
                   {displayStore.tags.slice(0, 4).map((tag) => (
                     <button
                       key={tag}
                       type="button"
                       onClick={() => handleTagSearch(tag)}
-                      className="tan-pressable shrink-0 py-0.5 text-[13px] font-semibold text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
+                      className="tan-pressable shrink-0 py-0.5 text-[11px] font-semibold leading-none text-white/88 drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]"
                       style={
                         isNightlifeTheme
                           ? {
@@ -1246,7 +1292,7 @@ export default function Home() {
                               background: 'rgba(20,10,40,0.36)',
                               boxShadow: '0 0 8px rgba(192,43,255,0.22)',
                               borderRadius: 8,
-                              paddingInline: 8,
+                              paddingInline: 7,
                             }
                           : isMedicalTheme
                           ? {
@@ -1255,7 +1301,7 @@ export default function Home() {
                               background: 'rgba(80,48,52,0.32)',
                               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
                               borderRadius: 8,
-                              paddingInline: 8,
+                              paddingInline: 7,
                             }
                           : isFoodTheme
                           ? {
@@ -1265,7 +1311,7 @@ export default function Home() {
                               boxShadow: 'none',
                               backdropFilter: 'blur(10px)',
                               borderRadius: 999,
-                              paddingInline: 8,
+                              paddingInline: 7,
                             }
                           : {
                               color: activeTheme.primary,

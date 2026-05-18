@@ -20,7 +20,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 
-type RegionStatus = 'active' | 'coming_soon';
+type RegionStatus = 'active' | 'coming_soon' | 'planned';
 
 type Region = {
   id: string;
@@ -58,6 +58,20 @@ const regions: Region[] = [
     status: 'coming_soon',
     label: '即将开放',
     areas: ['圣水', '纛岛', '首尔林'],
+  },
+  {
+    id: 'geondae',
+    name: '建大生活圈',
+    status: 'coming_soon',
+    label: '即将开放',
+    areas: ['建大', '华阳', '儿童大公园'],
+  },
+  {
+    id: 'gangnam',
+    name: '江南生活圈',
+    status: 'planned',
+    label: '计划开放',
+    areas: ['江南', '新沙', '狎鸥亭', '论岘'],
   },
 ];
 
@@ -113,7 +127,8 @@ const avatarGradients = [
 
 export default function NightlifeMeetups() {
   const navigate = useNavigate();
-  const [selectedRegionId] = useState('hongdae');
+  const [selectedRegionId, setSelectedRegionId] = useState('hongdae');
+  const [isRegionMenuOpen, setIsRegionMenuOpen] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const selectedRegion = regions.find((region) => region.id === selectedRegionId) ?? regions[0];
   const visibleMeetups = useMemo(
@@ -147,7 +162,17 @@ export default function NightlifeMeetups() {
   };
 
   const handleRegionSelect = () => {
-    toast.info(`${selectedRegion.name}已开放，其他生活圈即将开放`);
+    setIsRegionMenuOpen((current) => !current);
+  };
+
+  const handleRegionOptionSelect = (region: Region) => {
+    if (region.status !== 'active') {
+      toast.info(`${region.name}${region.label}`);
+      return;
+    }
+
+    setSelectedRegionId(region.id);
+    setIsRegionMenuOpen(false);
   };
 
   const handleJoinMeetup = (meetupId: string) => {
@@ -195,9 +220,9 @@ export default function NightlifeMeetups() {
 
       <header className="absolute inset-x-0 top-0 z-30 px-5 pt-[calc(12px+env(safe-area-inset-top))]">
         <div className="flex min-h-8 items-center gap-2">
-          <h1 className="shrink-0 bg-[linear-gradient(135deg,#FF4FD8_0%,#C02BFF_45%,#2EDBFF_100%)] bg-clip-text text-[22px] font-extrabold leading-none tracking-normal text-transparent drop-shadow-[0_0_10px_rgba(192,43,255,0.8)]">
+          <button type="button" onClick={() => navigate('/?category=nightlife')} className="shrink-0 bg-[linear-gradient(135deg,#FF4FD8_0%,#C02BFF_45%,#2EDBFF_100%)] bg-clip-text text-[22px] font-extrabold leading-none tracking-normal text-transparent drop-shadow-[0_0_10px_rgba(192,43,255,0.8)]">
             Tanmap
-          </h1>
+          </button>
           <div className="ml-auto flex min-w-0 max-w-[calc(100vw-128px)] items-center justify-end gap-1 overflow-x-auto tan-scrollbar-hide">
             {['小圈子', '本地搭子', '我的', '收藏夹'].map((label) => (
               <button key={label} type="button" onClick={() => handleTopAction(label)} className="top-pill h-7 shrink-0 px-2 text-[11px] font-semibold min-[410px]:h-8 min-[410px]:px-2.5 min-[410px]:text-[12px]">
@@ -260,17 +285,41 @@ export default function NightlifeMeetups() {
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={handleRegionSelect}
-          className="mb-3 flex h-11 items-center gap-2 rounded-full border border-[var(--glass-border)] bg-[rgba(8,10,24,0.46)] px-4 text-[15px] font-semibold text-white shadow-[0_0_16px_rgba(192,43,255,0.42)] backdrop-blur-[14px]"
-        >
-          <MapPin size={18} className="text-[#FF4FD8]" fill="currentColor" />
-          <Check size={16} className="text-[#48F0B4]" />
-          <span>{selectedRegion.name}</span>
-          <span className="text-[#48F0B4]">（{selectedRegion.label}）</span>
-          <ChevronDown size={18} className="ml-auto" />
-        </button>
+        <div className="relative mb-3">
+          <button
+            type="button"
+            onClick={handleRegionSelect}
+            aria-expanded={isRegionMenuOpen}
+            className="flex h-11 w-full max-w-[368px] items-center gap-2 rounded-full border border-[var(--glass-border)] bg-[rgba(8,10,24,0.46)] px-4 text-[15px] font-semibold text-white shadow-[0_0_16px_rgba(192,43,255,0.42)] backdrop-blur-[14px]"
+          >
+            <MapPin size={18} className="text-[#FF4FD8]" fill="currentColor" />
+            <Check size={16} className="text-[#48F0B4]" />
+            <span>{selectedRegion.name}</span>
+            <span className="text-[#48F0B4]">（{selectedRegion.label}）</span>
+            <ChevronDown size={18} className={`ml-auto transition-transform ${isRegionMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isRegionMenuOpen && (
+            <div className="absolute left-0 right-0 top-[50px] z-40 max-w-[368px] rounded-[20px] border border-[rgba(192,43,255,0.42)] bg-[rgba(8,10,24,0.9)] p-2 shadow-[0_18px_40px_rgba(0,0,0,0.38),0_0_18px_rgba(192,43,255,0.24)] backdrop-blur-[18px]">
+              {regions.map((region) => {
+                const active = region.status === 'active';
+                return (
+                  <button
+                    key={region.id}
+                    type="button"
+                    onClick={() => handleRegionOptionSelect(region)}
+                    className={`flex h-11 w-full items-center justify-between rounded-[16px] px-3 text-left text-[14px] font-semibold transition ${
+                      active ? 'text-white hover:bg-[rgba(192,43,255,0.16)]' : 'text-white/58 hover:bg-white/6'
+                    }`}
+                  >
+                    <span>{active ? '✅' : '🔒'} {region.name}</span>
+                    <span className={active ? 'text-[#48F0B4]' : 'text-white/48'}>（{region.label}）</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="mb-3 flex items-center justify-between gap-2 text-[12px] font-medium text-white/68">
           <div className="flex min-w-0 items-center gap-2">
@@ -304,28 +353,30 @@ export default function NightlifeMeetups() {
         </section>
       </section>
 
-      <nav className="absolute inset-x-4 bottom-[calc(14px+env(safe-area-inset-bottom))] z-30 grid h-[64px] grid-cols-[0.8fr_1.65fr_0.56fr_0.56fr_0.56fr] items-center gap-2 rounded-[22px] border border-[rgba(192,43,255,0.38)] bg-[rgba(5,7,18,0.76)] px-2 shadow-[0_0_16px_rgba(192,43,255,0.35),inset_0_0_16px_rgba(255,255,255,0.04)] backdrop-blur-[18px]">
-        <button type="button" onClick={handleBack} className="flex h-12 items-center justify-center gap-1.5 rounded-full text-[14px] font-semibold text-white">
+      <nav className="absolute inset-x-4 bottom-[calc(14px+env(safe-area-inset-bottom))] z-30 grid h-[64px] grid-cols-[minmax(0,1fr)_166px_minmax(0,1fr)] items-center gap-1 rounded-[22px] border border-[rgba(192,43,255,0.38)] bg-[rgba(5,7,18,0.76)] px-3 shadow-[0_0_16px_rgba(192,43,255,0.35),inset_0_0_16px_rgba(255,255,255,0.04)] backdrop-blur-[18px] min-[410px]:grid-cols-[minmax(0,1fr)_184px_minmax(0,1fr)]">
+        <button type="button" onClick={handleBack} className="flex h-12 justify-self-start items-center justify-center gap-1.5 rounded-full pr-2 text-[14px] font-semibold text-white">
           <ArrowLeft size={21} />
           返回
         </button>
         <button
           type="button"
           onClick={handleCreateMeetup}
-          className="flex h-12 items-center justify-center gap-2 rounded-full border border-white/28 bg-[linear-gradient(135deg,#6A5CFF_0%,#C02BFF_52%,#FF4FD8_100%)] text-[16px] font-extrabold text-white shadow-[0_0_14px_rgba(192,43,255,0.85),0_0_28px_rgba(255,79,216,0.45),inset_0_1px_1px_rgba(255,255,255,0.35)]"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/28 bg-[linear-gradient(135deg,#6A5CFF_0%,#C02BFF_52%,#FF4FD8_100%)] text-[16px] font-extrabold text-white shadow-[0_0_14px_rgba(192,43,255,0.85),0_0_28px_rgba(255,79,216,0.45),inset_0_1px_1px_rgba(255,255,255,0.35)]"
         >
           <Plus size={19} />
           发起组队
         </button>
-        <button type="button" onClick={handleSave} aria-label="收藏" className={`grid h-11 place-items-center ${isSaved ? 'text-[#2EDBFF]' : 'text-white/90'}`}>
-          <Star size={24} fill={isSaved ? 'currentColor' : 'none'} />
-        </button>
-        <button type="button" onClick={handleShare} aria-label="分享" className="grid h-11 place-items-center text-white/90">
-          <Share2 size={23} />
-        </button>
-        <button type="button" onClick={() => toast.info('当前已在找蹦迪搭子页')} aria-label="搭子" className="grid h-11 place-items-center rounded-full text-[#FF4FD8] shadow-[0_0_18px_rgba(192,43,255,0.4)]">
-          <UsersRound size={25} fill="currentColor" />
-        </button>
+        <div className="flex justify-self-end items-center gap-1">
+          <button type="button" onClick={handleSave} aria-label="收藏" className={`grid h-11 w-9 place-items-center ${isSaved ? 'text-[#2EDBFF]' : 'text-white/90'}`}>
+            <Star size={24} fill={isSaved ? 'currentColor' : 'none'} />
+          </button>
+          <button type="button" onClick={handleShare} aria-label="分享" className="grid h-11 w-9 place-items-center text-white/90">
+            <Share2 size={23} />
+          </button>
+          <button type="button" onClick={() => toast.info('当前已在找蹦迪搭子页')} aria-label="搭子" className="grid h-11 w-9 place-items-center rounded-full text-[#FF4FD8] shadow-[0_0_18px_rgba(192,43,255,0.4)]">
+            <UsersRound size={25} fill="currentColor" />
+          </button>
+        </div>
       </nav>
     </main>
   );
